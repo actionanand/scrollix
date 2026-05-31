@@ -12,6 +12,10 @@ npm run develop
 
 Once the server is running, open your browser and navigate to `http://localhost:4212/`. The application will automatically reload whenever you modify any of the source files.
 
+## Live URL
+
+1. https://actionanand.github.io/scrollix/
+
 ## Cloning Guide
 
 1.  Clone only the remote primary HEAD (default: origin/main)
