@@ -1,0 +1,20 @@
+@if (loading()) {
+  <div class="loading" role="status">
+    <div class="spinner" aria-hidden="true"></div>
+    <span>Loading videos...</span>
+  </div>
+}
+
+@if (error()) {
+  <div class="error" role="alert">{{ error() }}</div>
+}
+
+<div class="video-grid">
+  @for (video of videos(); track video.sNo) {
+    <app-video-player [item]="video" />
+  } @empty {
+    @if (!loading()) {
+      <p class="empty">No videos available</p>
+    }
+  }
+</div>

@@ -1,0 +1,20 @@
+@if (loading()) {
+  <div class="loading" role="status">
+    <div class="spinner" aria-hidden="true"></div>
+    <span>Loading posts...</span>
+  </div>
+}
+
+@if (error()) {
+  <div class="error" role="alert">{{ error() }}</div>
+}
+
+<div class="post-grid">
+  @for (post of posts(); track post.sNo) {
+    <app-post-card [item]="post" />
+  } @empty {
+    @if (!loading()) {
+      <p class="empty">No posts available</p>
+    }
+  }
+</div>

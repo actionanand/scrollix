@@ -1,0 +1,32 @@
+<div class="post-card">
+  @if (item().title) {
+    <h3 class="post-title">{{ item().title }}</h3>
+  }
+  @if (isFacebookPost()) {
+    <div class="post-embed">
+      <iframe
+        [src]="embedUrl()"
+        scrolling="no"
+        allowTransparency="true"
+        allow="encrypted-media"
+        [title]="item().title || 'Post ' + item().sNo"
+      ></iframe>
+    </div>
+  } @else {
+    <div
+      class="post-link-card"
+      (click)="openPost()"
+      role="link"
+      tabindex="0"
+      (keydown.enter)="openPost()"
+    >
+      <p class="post-url">{{ item().url }}</p>
+    </div>
+  }
+  @if (item().desc) {
+    <p class="post-desc">{{ item().desc }}</p>
+  }
+  <button class="ctrl-btn open-btn" (click)="openPost()" aria-label="Open post in new tab">
+    ↗ Open Post
+  </button>
+</div>

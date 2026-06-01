@@ -1,0 +1,28 @@
+<header class="app-header">
+  <h1 class="app-title">Scrollix</h1>
+  <div class="auth-section">
+    @if (auth.isLoggedIn()) {
+      <span class="auth-badge">🔓</span>
+      <button class="btn btn-logout" (click)="onLogout()">Logout</button>
+    } @else {
+      @if (showLoginForm()) {
+        <form class="login-form" (submit)="onLogin(); $event.preventDefault()">
+          <input
+            [formControl]="passwordControl"
+            type="password"
+            placeholder="Password"
+            autocomplete="current-password"
+            aria-label="Password"
+          />
+          <button type="submit" class="btn btn-go">Go</button>
+          <button type="button" class="btn btn-cancel" (click)="toggleLoginForm()">✕</button>
+        </form>
+        @if (loginError()) {
+          <p class="login-error" role="alert">Invalid password</p>
+        }
+      } @else {
+        <button class="btn btn-login" (click)="toggleLoginForm()">Login</button>
+      }
+    }
+  </div>
+</header>

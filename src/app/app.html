@@ -1,3 +1,10 @@
-<div>Scrollix App</div>
+<app-header />
 
-<router-outlet />
+<nav class="tab-nav" aria-label="Content tabs">
+  <a routerLink="/videos" routerLinkActive="active" class="tab-link">Videos</a>
+  <a routerLink="/posts" routerLinkActive="active" class="tab-link">Posts</a>
+</nav>
+
+<main class="content">
+  <router-outlet />
+</main>
