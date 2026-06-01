@@ -26,9 +26,18 @@ export class VideoDetailComponent {
   protected readonly item = computed(() => {
     const id = this.routeId();
     if (!id) return null;
-    const sNo = decodeVideoId(id);
-    if (!Number.isInteger(sNo) || sNo <= 0) return null;
-    const found = this.sheetData.items().find((i) => i.sNo === sNo);
+    const slug = decodeVideoId(id);
+    if (!slug) return null;
+    const found = this.sheetData.items().find((i) => {
+      // Match by URL slug: the slug is either the full URL's last segment or a short ID
+      if (i.url === slug) return true;
+      try {
+        const segments = new URL(i.url).pathname.split('/').filter(Boolean);
+        return segments[segments.length - 1] === slug;
+      } catch {
+        return false;
+      }
+    });
     if (!found) return null;
     if (found.isProtected && !this.auth.isLoggedIn()) return null;
     if (found.type === 'post') return null;
@@ -38,7 +47,7 @@ export class VideoDetailComponent {
   protected readonly shareUrl = computed(() => {
     const mediaItem = this.item();
     if (!mediaItem) return '';
-    return `${location.origin}/video/${encodeVideoId(mediaItem.sNo)}`;
+    return `${location.origin}/video/${encodeVideoId(mediaItem.url)}`;
   });
 
   constructor() {

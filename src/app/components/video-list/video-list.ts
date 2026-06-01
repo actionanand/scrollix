@@ -108,8 +108,8 @@ export class VideoListComponent {
     this.sheetData.loadData();
   }
 
-  protected encodeId(sNo: number): string {
-    return encodeVideoId(sNo);
+  protected encodeId(url: string): string {
+    return encodeVideoId(url);
   }
 
   protected onFilterChange(event: Event): void {

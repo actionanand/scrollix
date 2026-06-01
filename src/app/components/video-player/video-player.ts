@@ -12,10 +12,10 @@ import {
   NgZone,
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
+import { encodeVideoId } from '../../utils/video-id';
 import { MediaItem } from '../../models/media-item.model';
 import { ToastService } from '../../services/toast.service';
 import { YoutubeService, YtPlayer } from '../../services/youtube.service';
-import { encodeVideoId } from '../../utils/video-id';
 
 interface DocumentPipApi {
   requestWindow(options: { width: number; height: number }): Promise<{ document: Document }>;
@@ -67,6 +67,8 @@ export class VideoPlayerComponent {
           const item = this.item();
           this.ytPlayer = new window.YT!.Player(this.ytPlayerId(), {
             videoId: item.url,
+            width: '100%',
+            height: '100%',
             playerVars: {
               origin: window.location.origin,
               autoplay: 0,
@@ -111,7 +113,7 @@ export class VideoPlayerComponent {
   }
 
   protected async copyLink(): Promise<void> {
-    const id = encodeVideoId(this.item().sNo);
+    const id = encodeVideoId(this.item().url);
     const url = `${location.origin}/video/${id}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -140,7 +142,7 @@ export class VideoPlayerComponent {
       pipIframe.src = srcIframe.src;
       pipIframe.style.cssText = 'width:100%;height:100%;border:none';
       pipIframe.allow = 'autoplay; encrypted-media; picture-in-picture';
-      pipWindow.document.body.style.margin = '0';
+      pipWindow.document.body.style.cssText = 'margin:0;padding:0;background:#000;overflow:hidden';
       pipWindow.document.body.appendChild(pipIframe);
     } catch {
       // PIP denied or not supported
@@ -148,15 +150,18 @@ export class VideoPlayerComponent {
   }
 
   private normalizeFacebookUrl(raw: string): string {
-    let url = raw.trim().replace(/#.*$/, ''); // strip fragment
-    if (!url.startsWith('http')) {
+    // Strip fragment and leading/trailing whitespace
+    let url = raw.trim().replace(/#.*$/, '');
+    // Ensure scheme and www
+    if (!/^https?:\/\//.test(url)) {
       url = 'https://www.' + url.replace(/^(www\.)?/, '');
     } else if (/^https?:\/\/(?!www\.)facebook\.com/.test(url)) {
       url = url.replace(/^(https?:\/\/)/, '$1www.');
     }
+    // Strip query params
     try {
       const u = new URL(url);
-      url = u.origin + u.pathname; // strip query params
+      url = u.origin + u.pathname.replace(/\/$/, ''); // no trailing slash
     } catch {
       /* keep as-is */
     }
@@ -180,10 +185,13 @@ export class VideoPlayerComponent {
         return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/reel/${item.url}`)}&show_text=false&mute=${muteVal}`;
 
       case 'facebook-share': {
+        // Extract numeric reel/video ID from the resolved URL and embed as facebook reel
         const clean = this.normalizeFacebookUrl(item.url);
-        const reelMatch = clean.match(/facebook\.com\/reel\/(\d+)/);
-        const href = reelMatch ? `https://www.facebook.com/reel/${reelMatch[1]}/` : clean;
-        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(href)}&show_text=false&mute=${muteVal}`;
+        const idMatch = clean.match(/\/(?:reel|videos|watch)\/(\d+)/);
+        if (idMatch) {
+          return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/reel/${idMatch[1]}/`)}&show_text=false&mute=${muteVal}`;
+        }
+        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(clean)}&show_text=false&mute=${muteVal}`;
       }
 
       case 'dailymotion': {

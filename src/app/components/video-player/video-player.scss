@@ -32,6 +32,16 @@
     border: none;
   }
 
+  // YouTube IFrame API injects its own iframe with inline width/height — override
+  .yt-player-slot > iframe {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border: none !important;
+  }
+
   &--vertical {
     padding-top: 125%;
   }

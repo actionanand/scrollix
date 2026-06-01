@@ -113,14 +113,19 @@ export class SheetDataService {
 
     const data = JSON.parse(jsonStr) as GvizResponse;
 
-    return data.table.rows.map((row) => ({
-      sNo: Number(row.c[0]?.v ?? 0),
-      type: String(row.c[1]?.v ?? '') as MediaType,
-      url: String(row.c[2]?.v ?? ''),
-      isProtected: String(row.c[3]?.v ?? '').toLowerCase() === 'yes',
-      title: String(row.c[4]?.v ?? ''),
-      desc: String(row.c[5]?.v ?? ''),
-      startTime: row.c[6]?.v != null ? Number(row.c[6].v) : null,
-    }));
+    return data.table.rows
+      .filter((row) => {
+        const sNo = Number(row.c[0]?.v);
+        return Number.isFinite(sNo) && sNo > 0;
+      })
+      .map((row) => ({
+        sNo: Number(row.c[0]!.v),
+        type: String(row.c[1]?.v ?? '') as MediaType,
+        url: String(row.c[2]?.v ?? ''),
+        isProtected: String(row.c[3]?.v ?? '').toLowerCase() === 'yes',
+        title: String(row.c[4]?.v ?? ''),
+        desc: String(row.c[5]?.v ?? ''),
+        startTime: row.c[6]?.v != null ? Number(row.c[6]!.v) : null,
+      }));
   }
 }

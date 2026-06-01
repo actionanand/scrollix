@@ -227,6 +227,43 @@
   </section>
 
   <section class="section">
+    <h2>Shareable Video Links</h2>
+    <p class="section-desc">
+      Each video has a permanent shareable URL derived from its <strong>URL column</strong> (not the
+      S.No). The logic:
+    </p>
+    <ol class="logic-list">
+      <li>
+        If the URL is a <strong>short ID</strong> (e.g. <code>K6o9JTcPgOA</code>), it is used
+        directly as the slug.
+      </li>
+      <li>
+        If the URL is a <strong>full link</strong> (e.g.
+        <code>https://www.facebook.com/share/v/1Dp1wqwvkX/</code>), the last path segment
+        (<code>1Dp1wqwvkX</code>) becomes the slug.
+      </li>
+      <li>
+        The slug is <strong>base-36 encoded</strong>: each character is converted to its char-code
+        (zero-padded to 3 digits), concatenated into a number, then expressed in base-36 for a
+        compact URL.
+      </li>
+    </ol>
+    <div class="example">
+      <div class="row">
+        <span class="label">YouTube ID:</span>
+        <code>K6o9JTcPgOA</code>
+      </div>
+      <div class="row">
+        <span class="label">Encoded:</span>
+        <code>/video/1y2x3...</code>
+      </div>
+      <p class="note">
+        ℹ️ This ID stays the same even if S.No changes, as long as the URL column remains unchanged.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
     <h2>Tips</h2>
     <ul class="tips-list">
       <li>
