@@ -37,7 +37,6 @@ export class VideoPlayerComponent {
 
   protected readonly embedUrl = computed(() => {
     const mediaItem = this.item();
-    this.iframeLoading.set(true);
     const url = this.buildEmbedUrl(mediaItem, this.muted());
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   });
@@ -49,6 +48,7 @@ export class VideoPlayerComponent {
   }
 
   protected toggleMute(): void {
+    this.iframeLoading.set(true);
     this.muted.update((v) => !v);
   }
 

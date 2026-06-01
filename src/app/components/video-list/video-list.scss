@@ -136,25 +136,33 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: 0.35rem;
   padding: 1.5rem 0 0.5rem;
+  flex-wrap: wrap;
 }
 
 .page-btn {
-  padding: 0.45rem 1rem;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 0.5rem;
   border: 1.5px solid #ddd;
   border-radius: 8px;
   background: #fff;
   font-size: 0.85rem;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 
-  &:hover:not(:disabled) {
+  &:hover:not(:disabled):not(.active) {
     background: #f0f0f0;
   }
 
   &:disabled {
-    opacity: 0.4;
+    opacity: 0.35;
     cursor: default;
   }
 
@@ -162,12 +170,25 @@
     outline: 2px solid #4361ee;
     outline-offset: 1px;
   }
+
+  &.active {
+    background: #4361ee;
+    color: #fff;
+    border-color: #4361ee;
+    font-weight: 600;
+  }
 }
 
-.page-info {
-  font-size: 0.85rem;
-  color: #666;
-  font-weight: 500;
+.nav-btn {
+  font-size: 1rem;
+}
+
+.page-ellipsis {
+  min-width: 28px;
+  text-align: center;
+  color: #999;
+  font-size: 0.9rem;
+  user-select: none;
 }
 
 .loading {

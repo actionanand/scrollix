@@ -67,16 +67,36 @@
 
 @if (totalPages() > 1 && !isOffline()) {
   <nav class="pagination" aria-label="Video pagination">
-    <button class="page-btn" [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)">
-      ← Prev
-    </button>
-    <span class="page-info">{{ currentPage() }} / {{ totalPages() }}</span>
     <button
-      class="page-btn"
+      class="page-btn nav-btn"
+      [disabled]="currentPage() === 1"
+      (click)="goToPage(currentPage() - 1)"
+      aria-label="Previous page"
+    >
+      ←
+    </button>
+    @for (page of pageNumbers(); track $index) {
+      @if (page === -1) {
+        <span class="page-ellipsis">…</span>
+      } @else {
+        <button
+          class="page-btn page-num"
+          [class.active]="page === currentPage()"
+          (click)="goToPage(page)"
+          [attr.aria-label]="'Page ' + page"
+          [attr.aria-current]="page === currentPage() ? 'page' : null"
+        >
+          {{ page }}
+        </button>
+      }
+    }
+    <button
+      class="page-btn nav-btn"
       [disabled]="currentPage() === totalPages()"
       (click)="goToPage(currentPage() + 1)"
+      aria-label="Next page"
     >
-      Next →
+      →
     </button>
   </nav>
 }

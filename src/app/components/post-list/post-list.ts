@@ -45,6 +45,24 @@ export class PostListComponent {
     Math.max(1, Math.ceil(this.searchedPosts().length / PAGE_SIZE)),
   );
 
+  protected readonly pageNumbers = computed(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: number[] = [];
+    if (total <= 5) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      const start = Math.max(2, current - 1);
+      const end = Math.min(total - 1, current + 1);
+      if (start > 2) pages.push(-1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (end < total - 1) pages.push(-1);
+      pages.push(total);
+    }
+    return pages;
+  });
+
   protected readonly paginatedPosts = computed(() => {
     const start = (this.currentPage() - 1) * PAGE_SIZE;
     return this.searchedPosts().slice(start, start + PAGE_SIZE);
