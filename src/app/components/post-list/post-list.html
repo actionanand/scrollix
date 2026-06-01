@@ -1,3 +1,17 @@
+<div class="toolbar">
+  <input
+    type="search"
+    class="search-input"
+    placeholder="Search posts..."
+    [value]="searchQuery()"
+    (input)="onSearchInput($event)"
+    aria-label="Search posts"
+  />
+  <button class="refresh-btn" (click)="onRefresh()" aria-label="Refresh" [disabled]="loading()">
+    ↻
+  </button>
+</div>
+
 @if (loading()) {
   <div class="loading" role="status">
     <div class="spinner" aria-hidden="true"></div>
@@ -6,15 +20,38 @@
 }
 
 @if (error()) {
-  <div class="error" role="alert">{{ error() }}</div>
+  <div class="error" role="alert">
+    {{ error() }}
+    <button class="retry-btn" (click)="onRefresh()">Retry</button>
+  </div>
+}
+
+@if (isOffline()) {
+  <div class="offline-banner" role="status">📡 You are offline</div>
 }
 
 <div class="post-grid">
-  @for (post of posts(); track post.sNo) {
+  @for (post of paginatedPosts(); track post.sNo) {
     <app-post-card [item]="post" />
   } @empty {
     @if (!loading()) {
-      <p class="empty">No posts available</p>
+      <p class="empty">No posts found</p>
     }
   }
 </div>
+
+@if (totalPages() > 1 && !isOffline()) {
+  <nav class="pagination" aria-label="Post pagination">
+    <button class="page-btn" [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)">
+      ← Prev
+    </button>
+    <span class="page-info">{{ currentPage() }} / {{ totalPages() }}</span>
+    <button
+      class="page-btn"
+      [disabled]="currentPage() === totalPages()"
+      (click)="goToPage(currentPage() + 1)"
+    >
+      Next →
+    </button>
+  </nav>
+}

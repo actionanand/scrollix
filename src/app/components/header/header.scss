@@ -19,29 +19,11 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
 
-.auth-badge {
-  font-size: 1.1rem;
-}
-
-.login-form {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-
-  input {
-    padding: 0.4rem 0.75rem;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    width: 130px;
-
-    &:focus-visible {
-      outline: 2px solid #fff;
-    }
-  }
+.welcome {
+  font-size: 0.85rem;
+  opacity: 0.9;
 }
 
 .btn {
@@ -68,8 +50,7 @@
   }
 }
 
-.btn-login,
-.btn-go {
+.btn-login {
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
 
@@ -85,19 +66,4 @@
   &:hover {
     background: rgba(255, 255, 255, 0.25);
   }
-}
-
-.btn-cancel {
-  background: transparent;
-  color: #fff;
-  padding: 0.4rem;
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.login-error {
-  color: #ffcdd2;
-  font-size: 0.8rem;
-  width: 100%;
-  text-align: right;
 }

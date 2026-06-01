@@ -4,6 +4,7 @@ export type MediaType =
   | 'instagram'
   | 'facebook-reel'
   | 'facebook'
+  | 'facebook-share'
   | 'dailymotion'
   | 'vimeo'
   | 'other-video'
@@ -17,4 +18,27 @@ export interface MediaItem {
   title: string;
   desc: string;
   startTime: number | null;
+}
+
+export interface LinkPreview {
+  title: string;
+  description: string;
+  image: string;
+  url: string;
+  logo: string;
+}
+
+export interface GvizCell {
+  v?: string | number | boolean | null;
+  f?: string;
+}
+
+export interface GvizRow {
+  c: (GvizCell | null)[];
+}
+
+export interface GvizResponse {
+  table: {
+    rows: GvizRow[];
+  };
 }

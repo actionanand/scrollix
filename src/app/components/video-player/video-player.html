@@ -2,13 +2,18 @@
   @if (item().title) {
     <h3 class="video-title">{{ item().title }}</h3>
   }
-  <div class="video-wrapper">
+  <div class="video-wrapper" [class.video-wrapper--vertical]="vertical()">
+    @if (iframeLoading()) {
+      <div class="loading-overlay" aria-hidden="true">
+        <div class="spinner"></div>
+      </div>
+    }
     <iframe
       #playerIframe
       [src]="embedUrl()"
+      (load)="onIframeLoad()"
       allow="
         accelerometer;
-        autoplay;
         clipboard-write;
         encrypted-media;
         gyroscope;
@@ -36,6 +41,7 @@
     }
     <button class="ctrl-btn" (click)="requestFullscreen()" aria-label="Fullscreen">⛶ Full</button>
     <button class="ctrl-btn" (click)="openOriginal()" aria-label="Open original">↗ Open</button>
+    <button class="ctrl-btn" (click)="copyLink()" aria-label="Copy link">📋 Copy</button>
   </div>
   @if (item().startTime) {
     <span class="start-time">Starts at {{ item().startTime }}s</span>

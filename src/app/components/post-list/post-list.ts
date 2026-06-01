@@ -1,7 +1,9 @@
-import { Component, inject, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, inject, computed, signal, ChangeDetectionStrategy } from '@angular/core';
 import { SheetDataService } from '../../services/sheet-data.service';
 import { AuthService } from '../../services/auth.service';
 import { PostCardComponent } from '../post-card/post-card';
+
+const PAGE_SIZE = 6;
 
 @Component({
   selector: 'app-post-list',
@@ -16,8 +18,12 @@ export class PostListComponent {
 
   protected readonly loading = this.sheetData.loading;
   protected readonly error = this.sheetData.error;
+  protected readonly isOffline = this.sheetData.isOffline;
 
-  protected readonly posts = computed(() => {
+  protected readonly searchQuery = signal('');
+  protected readonly currentPage = signal(1);
+
+  private readonly allPosts = computed(() => {
     const isLoggedIn = this.auth.isLoggedIn();
     return this.sheetData.items().filter((item) => {
       if (item.type !== 'post') return false;
@@ -26,7 +32,42 @@ export class PostListComponent {
     });
   });
 
+  protected readonly searchedPosts = computed(() => {
+    const q = this.searchQuery().toLowerCase().trim();
+    const posts = this.allPosts();
+    if (!q) return posts;
+    return posts.filter(
+      (p) => p.title.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q),
+    );
+  });
+
+  protected readonly totalPages = computed(() =>
+    Math.max(1, Math.ceil(this.searchedPosts().length / PAGE_SIZE)),
+  );
+
+  protected readonly paginatedPosts = computed(() => {
+    const start = (this.currentPage() - 1) * PAGE_SIZE;
+    return this.searchedPosts().slice(start, start + PAGE_SIZE);
+  });
+
   constructor() {
     this.sheetData.loadData();
+  }
+
+  protected onSearchInput(event: Event): void {
+    this.searchQuery.set((event.target as HTMLInputElement).value);
+    this.currentPage.set(1);
+  }
+
+  protected goToPage(page: number): void {
+    if (page >= 1 && page <= this.totalPages()) {
+      this.currentPage.set(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  protected onRefresh(): void {
+    this.sheetData.loadData(true);
+    this.currentPage.set(1);
   }
 }

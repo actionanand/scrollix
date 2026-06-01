@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'videos', pathMatch: 'full' },
@@ -11,5 +12,20 @@ export const routes: Routes = [
     path: 'posts',
     loadComponent: () =>
       import('./components/post-list/post-list').then((m) => m.PostListComponent),
+  },
+  {
+    path: 'support',
+    loadComponent: () => import('./components/support/support').then((m) => m.SupportComponent),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'video/:id',
+    loadComponent: () =>
+      import('./components/video-detail/video-detail').then((m) => m.VideoDetailComponent),
+  },
+  {
+    path: '**',
+    loadComponent: () =>
+      import('./components/not-found/not-found').then((m) => m.NotFoundComponent),
   },
 ];

@@ -10,6 +10,12 @@ import {
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { MediaItem } from '../../models/media-item.model';
+import { ToastService } from '../../services/toast.service';
+import { encodeVideoId } from '../../utils/video-id';
+
+interface DocumentPipApi {
+  requestWindow(options: { width: number; height: number }): Promise<{ document: Document }>;
+}
 
 @Component({
   selector: 'app-video-player',
@@ -19,20 +25,28 @@ import { MediaItem } from '../../models/media-item.model';
 })
 export class VideoPlayerComponent {
   readonly item = input.required<MediaItem>();
+  readonly vertical = input(false);
 
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly toast = inject(ToastService);
   protected readonly muted = signal(false);
+  protected readonly iframeLoading = signal(true);
   protected readonly pipSupported = 'documentPictureInPicture' in window;
 
   private readonly iframeRef = viewChild<ElementRef<HTMLIFrameElement>>('playerIframe');
 
   protected readonly embedUrl = computed(() => {
     const mediaItem = this.item();
+    this.iframeLoading.set(true);
     const url = this.buildEmbedUrl(mediaItem, this.muted());
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   });
 
   protected readonly originalUrl = computed(() => this.buildOriginalUrl(this.item()));
+
+  protected onIframeLoad(): void {
+    this.iframeLoading.set(false);
+  }
 
   protected toggleMute(): void {
     this.muted.update((v) => !v);
@@ -42,20 +56,30 @@ export class VideoPlayerComponent {
     window.open(this.originalUrl(), '_blank', 'noopener,noreferrer');
   }
 
+  protected async copyLink(): Promise<void> {
+    const id = encodeVideoId(this.item().sNo);
+    const url = `${location.origin}/video/${id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      this.toast.show('📋 Link copied!');
+    } catch {
+      this.toast.show('Failed to copy link');
+    }
+  }
+
   protected requestFullscreen(): void {
     const iframe = this.iframeRef()?.nativeElement;
     iframe?.requestFullscreen?.();
   }
 
   protected async requestPip(): Promise<void> {
-    if (!('documentPictureInPicture' in window)) return;
+    const pipApi = (window as unknown as { documentPictureInPicture?: DocumentPipApi })
+      .documentPictureInPicture;
+    if (!pipApi) return;
     try {
       const iframe = this.iframeRef()?.nativeElement;
       if (!iframe) return;
-      const pipWindow = await (window as any).documentPictureInPicture.requestWindow({
-        width: 400,
-        height: 225,
-      });
+      const pipWindow = await pipApi.requestWindow({ width: 400, height: 225 });
       const pipIframe = pipWindow.document.createElement('iframe');
       pipIframe.src = iframe.src;
       pipIframe.style.cssText = 'width:100%;height:100%;border:none';
@@ -73,26 +97,27 @@ export class VideoPlayerComponent {
     switch (item.type) {
       case 'youtube':
       case 'youtube-short': {
+        params.set('origin', location.origin);
         if (item.startTime) params.set('start', String(item.startTime));
         if (muted) params.set('mute', '1');
-        const qs = params.toString();
-        return `https://www.youtube.com/embed/${item.url}${qs ? '?' + qs : ''}`;
+        return `https://www.youtube.com/embed/${item.url}?${params.toString()}`;
       }
       case 'instagram':
         return `https://www.instagram.com/p/${item.url}/embed/`;
+      case 'facebook':
       case 'facebook-reel':
         return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/reel/${item.url}`)}&show_text=false&mute=${muted}`;
-      case 'facebook':
-        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/share/v/${item.url}/`)}&show_text=false&mute=${muted}`;
+      case 'facebook-share':
+        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(item.url)}&show_text=false&mute=${muted}`;
       case 'dailymotion': {
+        params.set('autoplay', '0');
         if (muted) params.set('mute', 'true');
-        const qs = params.toString();
-        return `https://www.dailymotion.com/embed/video/${item.url}${qs ? '?' + qs : ''}`;
+        return `https://www.dailymotion.com/embed/video/${item.url}?${params.toString()}`;
       }
       case 'vimeo': {
+        params.set('autoplay', '0');
         if (muted) params.set('muted', '1');
-        const qs = params.toString();
-        return `https://player.vimeo.com/video/${item.url}${qs ? '?' + qs : ''}`;
+        return `https://player.vimeo.com/video/${item.url}?${params.toString()}`;
       }
       case 'other-video':
         return item.url;
@@ -109,10 +134,11 @@ export class VideoPlayerComponent {
         return `https://www.youtube.com/shorts/${item.url}`;
       case 'instagram':
         return `https://www.instagram.com/p/${item.url}/`;
+      case 'facebook':
       case 'facebook-reel':
         return `https://www.facebook.com/reel/${item.url}`;
-      case 'facebook':
-        return `https://www.facebook.com/share/v/${item.url}/`;
+      case 'facebook-share':
+        return item.url;
       case 'dailymotion':
         return `https://www.dailymotion.com/video/${item.url}`;
       case 'vimeo':

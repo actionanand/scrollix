@@ -1,0 +1,37 @@
+<div class="detail-page">
+  <div class="detail-header">
+    <button class="back-btn" (click)="goBack()" aria-label="Back to videos">← Back</button>
+    @if (item()) {
+      <button class="copy-btn" (click)="copyLink()" aria-label="Copy link">📋 Copy Link</button>
+    }
+  </div>
+
+  @if (loading()) {
+    <div class="loading" role="status">
+      <div class="spinner" aria-hidden="true"></div>
+      <span>Loading...</span>
+    </div>
+  } @else if (item(); as video) {
+    <div class="detail-content">
+      <app-video-player [item]="video" />
+      <div class="detail-info">
+        @if (video.title) {
+          <h1 class="detail-title">{{ video.title }}</h1>
+        }
+        <span class="type-badge">{{ video.type }}</span>
+        @if (video.desc) {
+          <p class="detail-desc">{{ video.desc }}</p>
+        }
+        @if (video.startTime) {
+          <p class="detail-meta">Start time: {{ video.startTime }}s</p>
+        }
+      </div>
+    </div>
+  } @else {
+    <div class="not-found">
+      <h2>Video not found</h2>
+      <p>This video doesn't exist or requires login.</p>
+      <a routerLink="/videos" class="home-link">← Back to Videos</a>
+    </div>
+  }
+</div>

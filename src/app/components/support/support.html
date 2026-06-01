@@ -1,0 +1,247 @@
+<div class="support-page">
+  <div class="support-header">
+    <button class="back-btn" (click)="goBack()" aria-label="Back to home">← Back</button>
+    <h1>Data Entry Guide</h1>
+  </div>
+
+  <section class="section">
+    <h2>Google Sheet Columns</h2>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>Col</th>
+            <th>Field</th>
+            <th>Required</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>A</td>
+            <td>S No</td>
+            <td>Yes</td>
+            <td>Serial number (auto-increment)</td>
+          </tr>
+          <tr>
+            <td>B</td>
+            <td>Type</td>
+            <td>Yes</td>
+            <td>Content type (see types below)</td>
+          </tr>
+          <tr>
+            <td>C</td>
+            <td>URL</td>
+            <td>Yes</td>
+            <td>Video ID or full URL depending on type</td>
+          </tr>
+          <tr>
+            <td>D</td>
+            <td>Protected</td>
+            <td>Yes</td>
+            <td>"Yes" to require login, "No" for public</td>
+          </tr>
+          <tr>
+            <td>E</td>
+            <td>Title</td>
+            <td>No</td>
+            <td>Display title for the content</td>
+          </tr>
+          <tr>
+            <td>F</td>
+            <td>Desc</td>
+            <td>No</td>
+            <td>Description text</td>
+          </tr>
+          <tr>
+            <td>G</td>
+            <td>Start Time</td>
+            <td>No</td>
+            <td>Start time in seconds (YouTube only)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Supported Types</h2>
+
+    <div class="type-grid">
+      <div class="type-card">
+        <h3>youtube</h3>
+        <p class="type-desc">Standard YouTube video</p>
+        <div class="example">
+          <div class="row">
+            <span class="label">URL column:</span>
+            <code>K6o9JTcPgOA</code>
+          </div>
+          <div class="row">
+            <span class="label">Actual URL:</span>
+            <code>youtube.com/watch?v=K6o9JTcPgOA</code>
+          </div>
+          <p class="note">✅ Start Time supported (column G, in seconds)</p>
+        </div>
+      </div>
+
+      <div class="type-card">
+        <h3>youtube-short</h3>
+        <p class="type-desc">YouTube Shorts video</p>
+        <div class="example">
+          <div class="row">
+            <span class="label">URL column:</span>
+            <code>WcLbw92V4qk</code>
+          </div>
+          <div class="row">
+            <span class="label">Actual URL:</span>
+            <code>youtube.com/shorts/WcLbw92V4qk</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="type-card">
+        <h3>instagram</h3>
+        <p class="type-desc">Instagram post or reel</p>
+        <div class="example">
+          <div class="row">
+            <span class="label">URL column:</span>
+            <code>DXHprmqgQQK</code>
+          </div>
+          <div class="row">
+            <span class="label">Actual URL:</span>
+            <code>instagram.com/p/DXHprmqgQQK/</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="type-card">
+        <h3>facebook</h3>
+        <p class="type-desc">Facebook video or reel (using reel ID)</p>
+        <div class="example">
+          <div class="row">
+            <span class="label">URL column:</span>
+            <code>1646510169815130</code>
+          </div>
+          <div class="row">
+            <span class="label">Actual URL:</span>
+            <code>facebook.com/reel/1646510169815130</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="type-card">
+        <h3>facebook-reel</h3>
+        <p class="type-desc">Facebook reel (same handling as facebook)</p>
+        <div class="example">
+          <div class="row">
+            <span class="label">URL column:</span>
+            <code>1646510169815130</code>
+          </div>
+          <div class="row">
+            <span class="label">Actual URL:</span>
+            <code>facebook.com/reel/1646510169815130</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="type-card">
+        <h3>facebook-share</h3>
+        <p class="type-desc">Facebook share link (auto-resolved to video/reel)</p>
+        <div class="example">
+          <div class="row">
+            <span class="label">URL column:</span>
+            <code class="wrap">https://www.facebook.com/share/v/1Dp1wqwvkX/</code>
+          </div>
+          <div class="row">
+            <span class="label">Or:</span>
+            <code class="wrap">https://www.facebook.com/share/r/1B5RTTQrfZ/</code>
+          </div>
+          <p class="note">ℹ️ Paste the full share URL. It will be resolved automatically.</p>
+        </div>
+      </div>
+
+      <div class="type-card">
+        <h3>dailymotion</h3>
+        <p class="type-desc">Dailymotion video</p>
+        <div class="example">
+          <div class="row">
+            <span class="label">URL column:</span>
+            <code>x5jnrro</code>
+          </div>
+          <div class="row">
+            <span class="label">Actual URL:</span>
+            <code>dailymotion.com/video/x5jnrro</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="type-card">
+        <h3>vimeo</h3>
+        <p class="type-desc">Vimeo video</p>
+        <div class="example">
+          <div class="row">
+            <span class="label">URL column:</span>
+            <code>360071854</code>
+          </div>
+          <div class="row">
+            <span class="label">Actual URL:</span>
+            <code>vimeo.com/360071854</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="type-card">
+        <h3>other-video</h3>
+        <p class="type-desc">Any other video platform</p>
+        <div class="example">
+          <div class="row">
+            <span class="label">URL column:</span>
+            <code class="wrap">Full embed URL (e.g., https://peertube.tv/w/...)</code>
+          </div>
+          <p class="note">
+            ⚠️ Use the full video URL. Embedding depends on the platform's support.
+          </p>
+        </div>
+      </div>
+
+      <div class="type-card">
+        <h3>post</h3>
+        <p class="type-desc">Blog post or Facebook post (shown in Posts tab)</p>
+        <div class="example">
+          <div class="row">
+            <span class="label">URL column:</span>
+            <code class="wrap">Full URL of the blog/post</code>
+          </div>
+          <div class="row">
+            <span class="label">Facebook:</span>
+            <code class="wrap">https://www.facebook.com/share/p/1FkYn1GL29/</code>
+          </div>
+          <div class="row">
+            <span class="label">Blog:</span>
+            <code class="wrap">https://example.com/blog/article</code>
+          </div>
+          <p class="note">ℹ️ Facebook posts are embedded. Other posts show a link preview card.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Tips</h2>
+    <ul class="tips-list">
+      <li>
+        Set <strong>Protected</strong> to <code>Yes</code> to require login to view the content
+      </li>
+      <li><strong>Title</strong> and <strong>Desc</strong> are optional for all types</li>
+      <li><strong>Start Time</strong> only works with YouTube videos (in seconds)</li>
+      <li>For <code>other-video</code>, use the full embeddable URL</li>
+      <li>For <code>post</code>, use the full URL of the blog or post</li>
+      <li>
+        For <code>facebook-share</code>, paste the share link as-is — it resolves automatically
+      </li>
+      <li>
+        Videos appear in the <strong>Videos</strong> tab, posts in the <strong>Posts</strong> tab
+      </li>
+    </ul>
+  </section>
+</div>

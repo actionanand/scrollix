@@ -1,3 +1,33 @@
+@if (pullDistance() > 0) {
+  <div class="pull-indicator" [style.height.px]="pullDistance()">
+    <span>{{ pullDistance() > 50 ? '↻ Release to refresh' : '↓ Pull to refresh' }}</span>
+  </div>
+}
+
+<div class="toolbar">
+  <input
+    type="search"
+    class="search-input"
+    placeholder="Search videos..."
+    [value]="searchQuery()"
+    (input)="onSearchInput($event)"
+    aria-label="Search videos"
+  />
+  <select
+    class="filter-select"
+    [value]="selectedType()"
+    (change)="onFilterChange($event)"
+    aria-label="Filter by type"
+  >
+    @for (type of availableTypes(); track type) {
+      <option [value]="type">{{ typeLabels[type] || type }}</option>
+    }
+  </select>
+  <button class="refresh-btn" (click)="onRefresh()" aria-label="Refresh" [disabled]="loading()">
+    ↻
+  </button>
+</div>
+
 @if (loading()) {
   <div class="loading" role="status">
     <div class="spinner" aria-hidden="true"></div>
@@ -6,15 +36,47 @@
 }
 
 @if (error()) {
-  <div class="error" role="alert">{{ error() }}</div>
+  <div class="error" role="alert">
+    {{ error() }}
+    <button class="retry-btn" (click)="onRefresh()">Retry</button>
+  </div>
 }
 
-<div class="video-grid">
-  @for (video of videos(); track video.sNo) {
-    <app-video-player [item]="video" />
+@if (isOffline()) {
+  <div class="offline-banner" role="status">📡 You are offline</div>
+}
+
+<div class="video-grid" [class.instagram-grid]="selectedType() === 'instagram'">
+  @for (video of paginatedVideos(); track video.sNo) {
+    <div class="video-cell">
+      <app-video-player [item]="video" [vertical]="selectedType() === 'instagram'" />
+      <a
+        class="detail-link"
+        [routerLink]="'/video/' + encodeId(video.sNo)"
+        aria-label="Open video details"
+      >
+        View Details →
+      </a>
+    </div>
   } @empty {
     @if (!loading()) {
-      <p class="empty">No videos available</p>
+      <p class="empty">No videos found</p>
     }
   }
 </div>
+
+@if (totalPages() > 1 && !isOffline()) {
+  <nav class="pagination" aria-label="Video pagination">
+    <button class="page-btn" [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)">
+      ← Prev
+    </button>
+    <span class="page-info">{{ currentPage() }} / {{ totalPages() }}</span>
+    <button
+      class="page-btn"
+      [disabled]="currentPage() === totalPages()"
+      (click)="goToPage(currentPage() + 1)"
+    >
+      Next →
+    </button>
+  </nav>
+}
