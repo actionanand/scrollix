@@ -12,7 +12,7 @@ describe('video-id helpers', () => {
 
     expect(extractFacebookVideoId(url)).toBe('2365458590609161');
     expect(extractShareSlug(url)).toBe('2365458590609161');
-    expect(buildFacebookVideoUrl(url)).toBe('https://www.facebook.com/reel/2365458590609161/');
+    expect(buildFacebookVideoUrl(url)).toBe('https://www.facebook.com/reel/2365458590609161');
   });
 
   it('uses facebook video ids for encoded dynamic routes', () => {
@@ -25,6 +25,15 @@ describe('video-id helpers', () => {
     expect(extractFacebookVideoId('facebook.com/reel/2365458590609161/')).toBe('2365458590609161');
     expect(extractFacebookVideoId('https://m.facebook.com/reel/2365458590609161/')).toBe(
       '2365458590609161',
+    );
+  });
+
+  it('maps known facebook share codes to their resolved numeric ids', () => {
+    expect(extractFacebookVideoId('https://www.facebook.com/share/v/1Dp1wqwvkX/')).toBe(
+      '2365458590609161',
+    );
+    expect(buildFacebookVideoUrl('https://www.facebook.com/share/r/1B5RTTQrfZ/')).toBe(
+      'https://www.facebook.com/reel/1491297816129848',
     );
   });
 });

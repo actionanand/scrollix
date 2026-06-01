@@ -40,6 +40,7 @@ export class VideoPlayerComponent {
 
   protected readonly muted = signal(false);
   protected readonly iframeLoading = signal(true);
+  protected readonly dailymotionActivated = signal(false);
   protected readonly pipSupported = 'documentPictureInPicture' in window;
   private readonly resolvedFacebookVideoUrl = signal<string | null>(null);
 
@@ -50,6 +51,12 @@ export class VideoPlayerComponent {
     const t = this.item().type;
     return t === 'youtube' || t === 'youtube-short';
   });
+
+  protected readonly isDailymotion = computed(() => this.item().type === 'dailymotion');
+
+  protected readonly isDeferredDailymotion = computed(
+    () => this.isDailymotion() && !this.dailymotionActivated(),
+  );
 
   protected readonly isVertical = computed(() => {
     const type = this.item().type;
@@ -64,9 +71,11 @@ export class VideoPlayerComponent {
 
   protected readonly canUsePip = computed(() => this.pipSupported && !this.isYoutube());
 
-  private readonly facebookVideoUrl = computed(
-    () => this.resolvedFacebookVideoUrl() ?? buildFacebookVideoUrl(this.item().url),
-  );
+  private readonly facebookVideoUrl = computed(() => {
+    const item = this.item();
+    const source = item.type === 'facebook-share' && item.resolvedUrl ? item.resolvedUrl : item.url;
+    return this.resolvedFacebookVideoUrl() ?? buildFacebookVideoUrl(source);
+  });
 
   protected readonly ytPlayerId = computed(() => `yt-player-${this.item().sNo}`);
 
@@ -117,6 +126,11 @@ export class VideoPlayerComponent {
     this.iframeLoading.set(false);
   }
 
+  protected activateDailymotion(): void {
+    this.iframeLoading.set(true);
+    this.dailymotionActivated.set(true);
+  }
+
   protected toggleMute(): void {
     const next = !this.muted();
     this.muted.set(next);
@@ -133,7 +147,7 @@ export class VideoPlayerComponent {
   }
 
   protected async copyLink(): Promise<void> {
-    const id = encodeVideoId(this.item().url);
+    const id = encodeVideoId(this.shareSource(this.item()));
     const url = `${location.origin}/video/${id}`;
     try {
       await navigator.clipboard.writeText(url);
@@ -182,7 +196,7 @@ export class VideoPlayerComponent {
     if (item.type !== 'facebook-share' || extractFacebookVideoId(item.url)) return;
 
     try {
-      const response = await fetch(this.facebookVideoUrl(), {
+      const response = await fetch(item.url, {
         redirect: 'follow',
         mode: 'no-cors',
         credentials: 'omit',
@@ -220,8 +234,13 @@ export class VideoPlayerComponent {
       case 'dailymotion': {
         const p = new URLSearchParams({
           autoplay: '0',
+          autostart: 'off',
           mute: muted ? '1' : '0',
-          'queue-autoplay-next': '0',
+          'endscreen-enable': 'false',
+          'queue-autoplay-next': 'false',
+          'queue-enable': 'false',
+          'sharing-enable': 'false',
+          'ui-start-screen-info': 'false',
         });
         return `https://www.dailymotion.com/embed/video/${item.url}?${p.toString()}`;
       }
@@ -259,5 +278,9 @@ export class VideoPlayerComponent {
       default:
         return item.url;
     }
+  }
+
+  private shareSource(item: MediaItem): string {
+    return item.type === 'facebook-share' && item.resolvedUrl ? item.resolvedUrl : item.url;
   }
 }

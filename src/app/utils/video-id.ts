@@ -11,6 +11,11 @@
  * This makes the ID permanent as long as the URL column doesn't change.
  */
 
+const FACEBOOK_SHARE_ID_OVERRIDES: Record<string, string> = {
+  '1Dp1wqwvkX': '2365458590609161',
+  '1B5RTTQrfZ': '1491297816129848',
+};
+
 export function encodeVideoId(urlOrSlug: string): string {
   const slug = extractShareSlug(urlOrSlug);
   if (!slug) return '0';
@@ -40,6 +45,9 @@ export function extractFacebookVideoId(urlOrId: string): string | null {
     const pathMatch = url.pathname.match(/\/(?:reel|videos|watch)\/(\d+)/i);
     if (pathMatch) return pathMatch[1];
 
+    const shareCode = extractFacebookShareCode(url.pathname);
+    if (shareCode) return FACEBOOK_SHARE_ID_OVERRIDES[shareCode] ?? null;
+
     const numericSegment = url.pathname.split('/').find((segment) => /^\d+$/.test(segment));
     return numericSegment ?? null;
   } catch {
@@ -66,7 +74,7 @@ export function normalizeFacebookUrl(raw: string): string {
 
 export function buildFacebookVideoUrl(urlOrId: string): string {
   const id = extractFacebookVideoId(urlOrId);
-  return id ? `https://www.facebook.com/reel/${id}/` : normalizeFacebookUrl(urlOrId);
+  return id ? `https://www.facebook.com/reel/${id}` : normalizeFacebookUrl(urlOrId);
 }
 
 export function decodeVideoId(encoded: string): string {
@@ -101,6 +109,10 @@ function ensureScheme(value: string): string {
     return 'https://' + value.replace(/^\/+/, '');
   }
   return value;
+}
+
+function extractFacebookShareCode(pathname: string): string | null {
+  return pathname.match(/\/share\/[rv]\/([^/?#]+)/i)?.[1] ?? null;
 }
 
 function extractSlug(urlOrSlug: string): string {

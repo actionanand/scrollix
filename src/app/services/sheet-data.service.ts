@@ -126,6 +126,7 @@ export class SheetDataService {
         title: String(row.c[4]?.v ?? ''),
         desc: String(row.c[5]?.v ?? ''),
         startTime: row.c[6]?.v != null ? Number(row.c[6]!.v) : null,
+        resolvedUrl: String(row.c[7]?.v ?? ''),
       }));
   }
 }

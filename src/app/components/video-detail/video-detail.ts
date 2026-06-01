@@ -30,7 +30,12 @@ export class VideoDetailComponent {
     if (!slug) return null;
     const found = this.sheetData
       .items()
-      .find((i) => i.url === slug || extractShareSlug(i.url) === slug);
+      .find(
+        (i) =>
+          i.url === slug ||
+          extractShareSlug(i.url) === slug ||
+          (i.resolvedUrl ? extractShareSlug(i.resolvedUrl) === slug : false),
+      );
     if (!found) return null;
     if (found.isProtected && !this.auth.isLoggedIn()) return null;
     if (found.type === 'post') return null;
@@ -40,7 +45,11 @@ export class VideoDetailComponent {
   protected readonly shareUrl = computed(() => {
     const mediaItem = this.item();
     if (!mediaItem) return '';
-    return `${location.origin}/video/${encodeVideoId(mediaItem.url)}`;
+    const source =
+      mediaItem.type === 'facebook-share' && mediaItem.resolvedUrl
+        ? mediaItem.resolvedUrl
+        : mediaItem.url;
+    return `${location.origin}/video/${encodeVideoId(source)}`;
   });
 
   constructor() {

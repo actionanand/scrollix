@@ -18,6 +18,7 @@ export interface MediaItem {
   title: string;
   desc: string;
   startTime: number | null;
+  resolvedUrl: string;
 }
 
 export interface LinkPreview {

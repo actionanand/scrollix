@@ -3,7 +3,7 @@
     <h3 class="video-title">{{ item().title }}</h3>
   }
   <div class="video-wrapper" [class.video-wrapper--vertical]="isVertical()">
-    @if (iframeLoading()) {
+    @if (iframeLoading() && !isDeferredDailymotion()) {
       <div class="loading-overlay" aria-hidden="true">
         <div class="spinner"></div>
       </div>
@@ -14,6 +14,16 @@
         class="yt-player-slot"
         [title]="item().title || 'Video ' + item().sNo"
       ></div>
+    } @else if (isDeferredDailymotion()) {
+      <button
+        class="load-player"
+        type="button"
+        (click)="activateDailymotion()"
+        [attr.aria-label]="'Play ' + (item().title || 'Dailymotion video')"
+      >
+        <span class="load-player__icon" aria-hidden="true"></span>
+        <span>Play</span>
+      </button>
     } @else {
       <iframe
         #playerIframe

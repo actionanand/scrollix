@@ -118,8 +118,8 @@ export class VideoListComponent {
     this.sheetData.loadData();
   }
 
-  protected encodeId(url: string): string {
-    return encodeVideoId(url);
+  protected encodeId(video: MediaItem): string {
+    return encodeVideoId(this.shareSource(video));
   }
 
   protected isVerticalVideo(video: MediaItem): boolean {
@@ -129,6 +129,10 @@ export class VideoListComponent {
       video.type === 'facebook-reel' ||
       video.type === 'facebook-share'
     );
+  }
+
+  private shareSource(video: MediaItem): string {
+    return video.type === 'facebook-share' && video.resolvedUrl ? video.resolvedUrl : video.url;
   }
 
   protected onFilterChange(event: Event): void {

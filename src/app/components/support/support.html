@@ -59,6 +59,12 @@
             <td>No</td>
             <td>Start time in seconds (YouTube only)</td>
           </tr>
+          <tr>
+            <td>H</td>
+            <td>Resolved URL/ID</td>
+            <td>No</td>
+            <td>Optional numeric Facebook reel ID or resolved URL for facebook-share</td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -157,6 +163,9 @@
             <code class="wrap">https://www.facebook.com/share/r/189yEPygCP/</code>
           </div>
           <p class="note">ℹ️ Paste the full share URL. It will be resolved automatically.</p>
+          <p class="note">
+            Optional: add the resolved numeric reel ID in column H for new share links.
+          </p>
         </div>
       </div>
 
@@ -243,9 +252,9 @@
         (<code>2365458590609161</code>) becomes the slug.
       </li>
       <li>
-        Other <strong>full links</strong> (e.g.
-        <code>https://www.facebook.com/share/v/1Dp1wqwvkX/</code>), the last path segment
-        (<code>1Dp1wqwvkX</code>) becomes the slug.
+        Known <strong>Facebook share links</strong> (e.g.
+        <code>https://www.facebook.com/share/v/1Dp1wqwvkX/</code>) resolve to their numeric reel ID
+        before encoding.
       </li>
       <li>
         The slug is <strong>base-36 encoded</strong>: each character is converted to its char-code
@@ -280,6 +289,9 @@
       <li>For <code>post</code>, use the full URL of the blog or post</li>
       <li>
         For <code>facebook-share</code>, paste the share link as-is — it resolves automatically
+      </li>
+      <li>
+        For new <code>facebook-share</code> links, column H can hold the resolved numeric reel ID
       </li>
       <li>
         Videos appear in the <strong>Videos</strong> tab, posts in the <strong>Posts</strong> tab
