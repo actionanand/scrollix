@@ -8,22 +8,30 @@
         <div class="spinner"></div>
       </div>
     }
-    <iframe
-      #playerIframe
-      [src]="embedUrl()"
-      (load)="onIframeLoad()"
-      allow="
-        accelerometer;
-        clipboard-write;
-        encrypted-media;
-        gyroscope;
-        picture-in-picture;
-        web-share;
-      "
-      allowfullscreen
-      [title]="item().title || 'Video ' + item().sNo"
-      loading="lazy"
-    ></iframe>
+    @if (isYoutube()) {
+      <div
+        [id]="ytPlayerId()"
+        class="yt-player-slot"
+        [title]="item().title || 'Video ' + item().sNo"
+      ></div>
+    } @else {
+      <iframe
+        #playerIframe
+        [src]="embedUrl()"
+        (load)="onIframeLoad()"
+        allow="
+          accelerometer;
+          clipboard-write;
+          encrypted-media;
+          gyroscope;
+          picture-in-picture;
+          web-share;
+        "
+        allowfullscreen
+        [title]="item().title || 'Video ' + item().sNo"
+        loading="lazy"
+      ></iframe>
+    }
   </div>
   @if (item().desc) {
     <p class="video-desc">{{ item().desc }}</p>

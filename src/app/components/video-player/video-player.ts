@@ -7,10 +7,14 @@ import {
   inject,
   viewChild,
   ElementRef,
+  afterNextRender,
+  DestroyRef,
+  NgZone,
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { MediaItem } from '../../models/media-item.model';
 import { ToastService } from '../../services/toast.service';
+import { YoutubeService, YtPlayer } from '../../services/youtube.service';
 import { encodeVideoId } from '../../utils/video-id';
 
 interface DocumentPipApi {
@@ -29,11 +33,23 @@ export class VideoPlayerComponent {
 
   private readonly sanitizer = inject(DomSanitizer);
   private readonly toast = inject(ToastService);
+  private readonly ytService = inject(YoutubeService);
+  private readonly ngZone = inject(NgZone);
+  private readonly destroyRef = inject(DestroyRef);
+
   protected readonly muted = signal(false);
   protected readonly iframeLoading = signal(true);
   protected readonly pipSupported = 'documentPictureInPicture' in window;
 
   private readonly iframeRef = viewChild<ElementRef<HTMLIFrameElement>>('playerIframe');
+  private ytPlayer: YtPlayer | undefined;
+
+  protected readonly isYoutube = computed(() => {
+    const t = this.item().type;
+    return t === 'youtube' || t === 'youtube-short';
+  });
+
+  protected readonly ytPlayerId = computed(() => `yt-player-${this.item().sNo}`);
 
   protected readonly embedUrl = computed(() => {
     const mediaItem = this.item();
@@ -43,13 +59,51 @@ export class VideoPlayerComponent {
 
   protected readonly originalUrl = computed(() => this.buildOriginalUrl(this.item()));
 
+  constructor() {
+    afterNextRender(() => {
+      if (!this.isYoutube()) return;
+      this.ytService.load().then(() => {
+        this.ngZone.runOutsideAngular(() => {
+          const item = this.item();
+          this.ytPlayer = new window.YT!.Player(this.ytPlayerId(), {
+            videoId: item.url,
+            playerVars: {
+              origin: window.location.origin,
+              autoplay: 0,
+              mute: this.muted() ? 1 : 0,
+              rel: 0,
+              playsinline: 1,
+              ...(item.startTime ? { start: item.startTime } : {}),
+            },
+            events: {
+              onReady: () => {
+                this.ngZone.run(() => this.iframeLoading.set(false));
+              },
+            },
+          });
+        });
+      });
+    });
+
+    this.destroyRef.onDestroy(() => {
+      this.ytPlayer?.destroy();
+      this.ytPlayer = undefined;
+    });
+  }
+
   protected onIframeLoad(): void {
     this.iframeLoading.set(false);
   }
 
   protected toggleMute(): void {
-    this.iframeLoading.set(true);
-    this.muted.update((v) => !v);
+    const next = !this.muted();
+    this.muted.set(next);
+    if (this.isYoutube()) {
+      if (next) this.ytPlayer?.mute();
+      else this.ytPlayer?.unMute();
+    } else {
+      this.iframeLoading.set(true);
+    }
   }
 
   protected openOriginal(): void {
@@ -68,7 +122,7 @@ export class VideoPlayerComponent {
   }
 
   protected requestFullscreen(): void {
-    const iframe = this.iframeRef()?.nativeElement;
+    const iframe = this.isYoutube() ? this.ytPlayer?.getIframe() : this.iframeRef()?.nativeElement;
     iframe?.requestFullscreen?.();
   }
 
@@ -76,12 +130,14 @@ export class VideoPlayerComponent {
     const pipApi = (window as unknown as { documentPictureInPicture?: DocumentPipApi })
       .documentPictureInPicture;
     if (!pipApi) return;
+    const srcIframe = this.isYoutube()
+      ? this.ytPlayer?.getIframe()
+      : this.iframeRef()?.nativeElement;
+    if (!srcIframe) return;
     try {
-      const iframe = this.iframeRef()?.nativeElement;
-      if (!iframe) return;
       const pipWindow = await pipApi.requestWindow({ width: 400, height: 225 });
       const pipIframe = pipWindow.document.createElement('iframe');
-      pipIframe.src = iframe.src;
+      pipIframe.src = srcIframe.src;
       pipIframe.style.cssText = 'width:100%;height:100%;border:none';
       pipIframe.allow = 'autoplay; encrypted-media; picture-in-picture';
       pipWindow.document.body.style.margin = '0';
@@ -91,36 +147,58 @@ export class VideoPlayerComponent {
     }
   }
 
+  private normalizeFacebookUrl(raw: string): string {
+    let url = raw.trim().replace(/#.*$/, ''); // strip fragment
+    if (!url.startsWith('http')) {
+      url = 'https://www.' + url.replace(/^(www\.)?/, '');
+    } else if (/^https?:\/\/(?!www\.)facebook\.com/.test(url)) {
+      url = url.replace(/^(https?:\/\/)/, '$1www.');
+    }
+    try {
+      const u = new URL(url);
+      url = u.origin + u.pathname; // strip query params
+    } catch {
+      /* keep as-is */
+    }
+    return url;
+  }
+
   private buildEmbedUrl(item: MediaItem, muted: boolean): string {
-    const params = new URLSearchParams();
+    const muteVal = muted ? 1 : 0;
 
     switch (item.type) {
       case 'youtube':
-      case 'youtube-short': {
-        params.set('origin', location.origin);
-        if (item.startTime) params.set('start', String(item.startTime));
-        if (muted) params.set('mute', '1');
-        return `https://www.youtube.com/embed/${item.url}?${params.toString()}`;
-      }
+      case 'youtube-short':
+        // Handled by YT.Player API — this fallback is never shown in the template
+        return '';
+
       case 'instagram':
         return `https://www.instagram.com/p/${item.url}/embed/`;
+
       case 'facebook':
       case 'facebook-reel':
-        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/reel/${item.url}`)}&show_text=false&mute=${muted}`;
-      case 'facebook-share':
-        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(item.url)}&show_text=false&mute=${muted}`;
+        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/reel/${item.url}`)}&show_text=false&mute=${muteVal}`;
+
+      case 'facebook-share': {
+        const clean = this.normalizeFacebookUrl(item.url);
+        const reelMatch = clean.match(/facebook\.com\/reel\/(\d+)/);
+        const href = reelMatch ? `https://www.facebook.com/reel/${reelMatch[1]}/` : clean;
+        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(href)}&show_text=false&mute=${muteVal}`;
+      }
+
       case 'dailymotion': {
-        params.set('autoplay', '0');
-        if (muted) params.set('mute', 'true');
-        return `https://www.dailymotion.com/embed/video/${item.url}?${params.toString()}`;
+        const p = new URLSearchParams({ autoplay: 'false', 'queue-autoplay-next': 'false' });
+        if (muted) p.set('mute', 'true');
+        return `https://www.dailymotion.com/embed/video/${item.url}?${p.toString()}`;
       }
+
       case 'vimeo': {
-        params.set('autoplay', '0');
-        if (muted) params.set('muted', '1');
-        return `https://player.vimeo.com/video/${item.url}?${params.toString()}`;
+        const p = new URLSearchParams({ autoplay: '0' });
+        if (muted) p.set('muted', '1');
+        return `https://player.vimeo.com/video/${item.url}?${p.toString()}`;
       }
+
       case 'other-video':
-        return item.url;
       default:
         return item.url;
     }
@@ -138,13 +216,12 @@ export class VideoPlayerComponent {
       case 'facebook-reel':
         return `https://www.facebook.com/reel/${item.url}`;
       case 'facebook-share':
-        return item.url;
+        return this.normalizeFacebookUrl(item.url);
       case 'dailymotion':
         return `https://www.dailymotion.com/video/${item.url}`;
       case 'vimeo':
         return `https://vimeo.com/${item.url}`;
       case 'other-video':
-        return item.url;
       default:
         return item.url;
     }

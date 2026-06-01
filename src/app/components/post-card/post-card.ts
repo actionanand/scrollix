@@ -29,21 +29,24 @@ export class PostCardComponent {
   protected readonly preview = signal<LinkPreview | null>(null);
   protected readonly previewLoading = signal(false);
 
-  protected readonly isFacebookPost = computed(() => this.item().url.includes('facebook.com'));
+  // True only for direct Facebook post URLs (groups/permalink/etc.) — NOT share/p/ short links
+  protected readonly isFacebookPost = computed(() => {
+    const url = this.item().url;
+    return url.includes('facebook.com') && !url.includes('/share/');
+  });
 
   protected readonly embedUrl = computed(() => {
     const mediaItem = this.item();
-    if (mediaItem.url.includes('facebook.com')) {
-      const url = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(mediaItem.url)}&show_text=true&width=500`;
-      return this.sanitizer.bypassSecurityTrustResourceUrl(url);
-    }
-    return null;
+    if (!this.isFacebookPost()) return null;
+    const url = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(mediaItem.url)}&show_text=true&width=500`;
+    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
   });
 
   constructor() {
     effect(() => {
       const item = this.item();
-      if (item.type === 'post' && !item.url.includes('facebook.com')) {
+      // Fetch preview for non-Facebook posts AND Facebook share short links
+      if (item.type === 'post' && !this.isFacebookPost()) {
         this.previewLoading.set(true);
         this.linkPreview
           .getPreview(item.url)
