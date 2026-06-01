@@ -105,7 +105,7 @@ function ensureScheme(value: string): string {
 
 function extractSlug(urlOrSlug: string): string {
   // If it looks like a plain ID (no slashes, no dots) use as-is
-  if (!/[\/.]/.test(urlOrSlug)) return urlOrSlug;
+  if (!/[/.]/.test(urlOrSlug)) return urlOrSlug;
   // Otherwise extract last meaningful path segment
   try {
     const u = new URL(urlOrSlug);

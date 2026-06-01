@@ -12,7 +12,7 @@ import {
   NgZone,
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
-import { buildFacebookVideoUrl, encodeVideoId } from '../../utils/video-id';
+import { buildFacebookVideoUrl, encodeVideoId, extractFacebookVideoId } from '../../utils/video-id';
 import { MediaItem } from '../../models/media-item.model';
 import { ToastService } from '../../services/toast.service';
 import { YoutubeService, YtPlayer } from '../../services/youtube.service';
@@ -30,6 +30,7 @@ interface DocumentPipApi {
 export class VideoPlayerComponent {
   readonly item = input.required<MediaItem>();
   readonly vertical = input(false);
+  readonly showMetadata = input(true);
 
   private readonly sanitizer = inject(DomSanitizer);
   private readonly toast = inject(ToastService);
@@ -40,6 +41,7 @@ export class VideoPlayerComponent {
   protected readonly muted = signal(false);
   protected readonly iframeLoading = signal(true);
   protected readonly pipSupported = 'documentPictureInPicture' in window;
+  private readonly resolvedFacebookVideoUrl = signal<string | null>(null);
 
   private readonly iframeRef = viewChild<ElementRef<HTMLIFrameElement>>('playerIframe');
   private ytPlayer: YtPlayer | undefined;
@@ -60,6 +62,12 @@ export class VideoPlayerComponent {
     );
   });
 
+  protected readonly canUsePip = computed(() => this.pipSupported && !this.isYoutube());
+
+  private readonly facebookVideoUrl = computed(
+    () => this.resolvedFacebookVideoUrl() ?? buildFacebookVideoUrl(this.item().url),
+  );
+
   protected readonly ytPlayerId = computed(() => `yt-player-${this.item().sNo}`);
 
   protected readonly embedUrl = computed(() => {
@@ -72,6 +80,7 @@ export class VideoPlayerComponent {
 
   constructor() {
     afterNextRender(() => {
+      void this.resolveFacebookShareRedirect();
       if (!this.isYoutube()) return;
       this.ytService.load().then(() => {
         this.ngZone.runOutsideAngular(() => {
@@ -168,6 +177,25 @@ export class VideoPlayerComponent {
     }
   }
 
+  private async resolveFacebookShareRedirect(): Promise<void> {
+    const item = this.item();
+    if (item.type !== 'facebook-share' || extractFacebookVideoId(item.url)) return;
+
+    try {
+      const response = await fetch(this.facebookVideoUrl(), {
+        redirect: 'follow',
+        mode: 'no-cors',
+        credentials: 'omit',
+      });
+      const id = extractFacebookVideoId(response.url);
+      if (id) {
+        this.resolvedFacebookVideoUrl.set(buildFacebookVideoUrl(id));
+      }
+    } catch {
+      // Some browsers do not expose cross-origin redirect targets for share links.
+    }
+  }
+
   private buildEmbedUrl(item: MediaItem, muted: boolean): string {
     const muteVal = muted ? 1 : 0;
 
@@ -185,13 +213,16 @@ export class VideoPlayerComponent {
         return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/reel/${item.url}`)}&show_text=false&mute=${muteVal}`;
 
       case 'facebook-share': {
-        const href = buildFacebookVideoUrl(item.url);
+        const href = this.facebookVideoUrl();
         return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(href)}&show_text=false&mute=${muteVal}`;
       }
 
       case 'dailymotion': {
-        const p = new URLSearchParams({ autoplay: 'false', 'queue-autoplay-next': 'false' });
-        if (muted) p.set('mute', 'true');
+        const p = new URLSearchParams({
+          autoplay: '0',
+          mute: muted ? '1' : '0',
+          'queue-autoplay-next': '0',
+        });
         return `https://www.dailymotion.com/embed/video/${item.url}?${p.toString()}`;
       }
 
@@ -219,7 +250,7 @@ export class VideoPlayerComponent {
       case 'facebook-reel':
         return `https://www.facebook.com/reel/${item.url}`;
       case 'facebook-share':
-        return buildFacebookVideoUrl(item.url);
+        return this.facebookVideoUrl();
       case 'dailymotion':
         return `https://www.dailymotion.com/video/${item.url}`;
       case 'vimeo':
