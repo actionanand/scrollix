@@ -157,6 +157,26 @@
   }
 }
 
+.logic-list {
+  padding-inline-start: 1.35rem;
+  margin: 0 0 1rem;
+  list-style-position: outside;
+
+  li {
+    padding-inline-start: 0.25rem;
+    margin-bottom: 0.65rem;
+    line-height: 1.5;
+  }
+
+  code {
+    background: #e8ecf4;
+    padding: 0.1rem 0.35rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    word-break: break-all;
+  }
+}
+
 .tips-list {
   list-style: none;
   display: flex;

@@ -2,7 +2,7 @@
   @if (item().title) {
     <h3 class="video-title">{{ item().title }}</h3>
   }
-  <div class="video-wrapper" [class.video-wrapper--vertical]="vertical()">
+  <div class="video-wrapper" [class.video-wrapper--vertical]="isVertical()">
     @if (iframeLoading()) {
       <div class="loading-overlay" aria-hidden="true">
         <div class="spinner"></div>

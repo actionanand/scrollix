@@ -3,7 +3,7 @@ import { RouterLink } from '@angular/router';
 import { SheetDataService } from '../../services/sheet-data.service';
 import { AuthService } from '../../services/auth.service';
 import { VideoPlayerComponent } from '../video-player/video-player';
-import { MediaType } from '../../models/media-item.model';
+import { MediaItem, MediaType } from '../../models/media-item.model';
 import { encodeVideoId } from '../../utils/video-id';
 
 const PAGE_SIZE = 6;
@@ -104,12 +104,31 @@ export class VideoListComponent {
     return this.searchedVideos().slice(start, start + PAGE_SIZE);
   });
 
+  protected readonly isTallGrid = computed(() => {
+    const type = this.selectedType();
+    return (
+      type === 'instagram' ||
+      type === 'youtube-short' ||
+      type === 'facebook-reel' ||
+      type === 'facebook-share'
+    );
+  });
+
   constructor() {
     this.sheetData.loadData();
   }
 
   protected encodeId(url: string): string {
     return encodeVideoId(url);
+  }
+
+  protected isVerticalVideo(video: MediaItem): boolean {
+    return (
+      video.type === 'instagram' ||
+      video.type === 'youtube-short' ||
+      video.type === 'facebook-reel' ||
+      video.type === 'facebook-share'
+    );
   }
 
   protected onFilterChange(event: Event): void {

@@ -12,7 +12,7 @@ import {
   NgZone,
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
-import { encodeVideoId } from '../../utils/video-id';
+import { buildFacebookVideoUrl, encodeVideoId } from '../../utils/video-id';
 import { MediaItem } from '../../models/media-item.model';
 import { ToastService } from '../../services/toast.service';
 import { YoutubeService, YtPlayer } from '../../services/youtube.service';
@@ -47,6 +47,17 @@ export class VideoPlayerComponent {
   protected readonly isYoutube = computed(() => {
     const t = this.item().type;
     return t === 'youtube' || t === 'youtube-short';
+  });
+
+  protected readonly isVertical = computed(() => {
+    const type = this.item().type;
+    return (
+      this.vertical() ||
+      type === 'youtube-short' ||
+      type === 'instagram' ||
+      type === 'facebook-reel' ||
+      type === 'facebook-share'
+    );
   });
 
   protected readonly ytPlayerId = computed(() => `yt-player-${this.item().sNo}`);
@@ -137,35 +148,24 @@ export class VideoPlayerComponent {
       : this.iframeRef()?.nativeElement;
     if (!srcIframe) return;
     try {
-      const pipWindow = await pipApi.requestWindow({ width: 400, height: 225 });
+      const vertical = this.isVertical();
+      const pipWindow = await pipApi.requestWindow({
+        width: vertical ? 360 : 400,
+        height: vertical ? 640 : 225,
+      });
       const pipIframe = pipWindow.document.createElement('iframe');
       pipIframe.src = srcIframe.src;
-      pipIframe.style.cssText = 'width:100%;height:100%;border:none';
+      pipIframe.style.cssText = 'display:block;width:100%;height:100%;border:0;margin:0';
       pipIframe.allow = 'autoplay; encrypted-media; picture-in-picture';
-      pipWindow.document.body.style.cssText = 'margin:0;padding:0;background:#000;overflow:hidden';
+      pipIframe.allowFullscreen = true;
+      pipWindow.document.documentElement.style.cssText =
+        'width:100%;height:100%;margin:0;background:#000';
+      pipWindow.document.body.style.cssText =
+        'width:100%;height:100%;margin:0;padding:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center';
       pipWindow.document.body.appendChild(pipIframe);
     } catch {
       // PIP denied or not supported
     }
-  }
-
-  private normalizeFacebookUrl(raw: string): string {
-    // Strip fragment and leading/trailing whitespace
-    let url = raw.trim().replace(/#.*$/, '');
-    // Ensure scheme and www
-    if (!/^https?:\/\//.test(url)) {
-      url = 'https://www.' + url.replace(/^(www\.)?/, '');
-    } else if (/^https?:\/\/(?!www\.)facebook\.com/.test(url)) {
-      url = url.replace(/^(https?:\/\/)/, '$1www.');
-    }
-    // Strip query params
-    try {
-      const u = new URL(url);
-      url = u.origin + u.pathname.replace(/\/$/, ''); // no trailing slash
-    } catch {
-      /* keep as-is */
-    }
-    return url;
   }
 
   private buildEmbedUrl(item: MediaItem, muted: boolean): string {
@@ -185,13 +185,8 @@ export class VideoPlayerComponent {
         return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/reel/${item.url}`)}&show_text=false&mute=${muteVal}`;
 
       case 'facebook-share': {
-        // Extract numeric reel/video ID from the resolved URL and embed as facebook reel
-        const clean = this.normalizeFacebookUrl(item.url);
-        const idMatch = clean.match(/\/(?:reel|videos|watch)\/(\d+)/);
-        if (idMatch) {
-          return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(`https://www.facebook.com/reel/${idMatch[1]}/`)}&show_text=false&mute=${muteVal}`;
-        }
-        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(clean)}&show_text=false&mute=${muteVal}`;
+        const href = buildFacebookVideoUrl(item.url);
+        return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(href)}&show_text=false&mute=${muteVal}`;
       }
 
       case 'dailymotion': {
@@ -224,7 +219,7 @@ export class VideoPlayerComponent {
       case 'facebook-reel':
         return `https://www.facebook.com/reel/${item.url}`;
       case 'facebook-share':
-        return this.normalizeFacebookUrl(item.url);
+        return buildFacebookVideoUrl(item.url);
       case 'dailymotion':
         return `https://www.dailymotion.com/video/${item.url}`;
       case 'vimeo':

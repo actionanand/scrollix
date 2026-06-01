@@ -12,12 +12,61 @@
  */
 
 export function encodeVideoId(urlOrSlug: string): string {
-  const slug = extractSlug(urlOrSlug);
+  const slug = extractShareSlug(urlOrSlug);
   if (!slug) return '0';
   const numStr = Array.from(slug)
     .map((ch) => ch.charCodeAt(0).toString().padStart(3, '0'))
     .join('');
   return parseInt36(numStr, 10).toString(36);
+}
+
+export function extractShareSlug(urlOrSlug: string): string {
+  const facebookVideoId = extractFacebookVideoId(urlOrSlug);
+  if (facebookVideoId) return facebookVideoId;
+  return extractSlug(urlOrSlug);
+}
+
+export function extractFacebookVideoId(urlOrId: string): string | null {
+  const raw = urlOrId.trim().replace(/#.*$/, '');
+  if (/^\d+$/.test(raw)) return raw;
+
+  try {
+    const url = new URL(ensureScheme(raw));
+    if (!/(^|\.)facebook\.com$/i.test(url.hostname)) return null;
+
+    const watchId = url.searchParams.get('v');
+    if (watchId && /^\d+$/.test(watchId)) return watchId;
+
+    const pathMatch = url.pathname.match(/\/(?:reel|videos|watch)\/(\d+)/i);
+    if (pathMatch) return pathMatch[1];
+
+    const numericSegment = url.pathname.split('/').find((segment) => /^\d+$/.test(segment));
+    return numericSegment ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeFacebookUrl(raw: string): string {
+  let url = raw.trim().replace(/#.*$/, '');
+  if (!url) return url;
+
+  url = ensureScheme(url);
+  if (/^https?:\/\/facebook\.com/i.test(url)) {
+    url = url.replace(/^(https?:\/\/)/i, '$1www.');
+  }
+
+  try {
+    const parsed = new URL(url);
+    return parsed.origin + parsed.pathname.replace(/\/$/, '');
+  } catch {
+    return url;
+  }
+}
+
+export function buildFacebookVideoUrl(urlOrId: string): string {
+  const id = extractFacebookVideoId(urlOrId);
+  return id ? `https://www.facebook.com/reel/${id}/` : normalizeFacebookUrl(urlOrId);
 }
 
 export function decodeVideoId(encoded: string): string {
@@ -45,6 +94,13 @@ function parseInt36(s: string, radix: number): bigint {
     result = result * r + BigInt(digit);
   }
   return result;
+}
+
+function ensureScheme(value: string): string {
+  if (!/^https?:\/\//i.test(value)) {
+    return 'https://' + value.replace(/^\/+/, '');
+  }
+  return value;
 }
 
 function extractSlug(urlOrSlug: string): string {

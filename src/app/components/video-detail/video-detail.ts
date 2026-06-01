@@ -5,7 +5,7 @@ import { SheetDataService } from '../../services/sheet-data.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { VideoPlayerComponent } from '../video-player/video-player';
-import { decodeVideoId, encodeVideoId } from '../../utils/video-id';
+import { decodeVideoId, encodeVideoId, extractShareSlug } from '../../utils/video-id';
 
 @Component({
   selector: 'app-video-detail',
@@ -28,16 +28,9 @@ export class VideoDetailComponent {
     if (!id) return null;
     const slug = decodeVideoId(id);
     if (!slug) return null;
-    const found = this.sheetData.items().find((i) => {
-      // Match by URL slug: the slug is either the full URL's last segment or a short ID
-      if (i.url === slug) return true;
-      try {
-        const segments = new URL(i.url).pathname.split('/').filter(Boolean);
-        return segments[segments.length - 1] === slug;
-      } catch {
-        return false;
-      }
-    });
+    const found = this.sheetData
+      .items()
+      .find((i) => i.url === slug || extractShareSlug(i.url) === slug);
     if (!found) return null;
     if (found.isProtected && !this.auth.isLoggedIn()) return null;
     if (found.type === 'post') return null;

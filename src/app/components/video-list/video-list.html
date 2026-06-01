@@ -46,10 +46,10 @@
   <div class="offline-banner" role="status">📡 You are offline</div>
 }
 
-<div class="video-grid" [class.instagram-grid]="selectedType() === 'instagram'">
+<div class="video-grid" [class.vertical-grid]="isTallGrid()">
   @for (video of paginatedVideos(); track video.sNo) {
     <div class="video-cell">
-      <app-video-player [item]="video" [vertical]="selectedType() === 'instagram'" />
+      <app-video-player [item]="video" [vertical]="isVerticalVideo(video)" />
       <a
         class="detail-link"
         [routerLink]="'/video/' + encodeId(video.url)"
