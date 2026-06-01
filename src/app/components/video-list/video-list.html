@@ -1,0 +1,102 @@
+@if (pullDistance() > 0) {
+  <div class="pull-indicator" [style.height.px]="pullDistance()">
+    <span>{{ pullDistance() > 50 ? '↻ Release to refresh' : '↓ Pull to refresh' }}</span>
+  </div>
+}
+
+<div class="toolbar">
+  <input
+    type="search"
+    class="search-input"
+    placeholder="Search videos..."
+    [value]="searchQuery()"
+    (input)="onSearchInput($event)"
+    aria-label="Search videos"
+  />
+  <select
+    class="filter-select"
+    [value]="selectedType()"
+    (change)="onFilterChange($event)"
+    aria-label="Filter by type"
+  >
+    @for (type of availableTypes(); track type) {
+      <option [value]="type">{{ typeLabels[type] || type }}</option>
+    }
+  </select>
+  <button class="refresh-btn" (click)="onRefresh()" aria-label="Refresh" [disabled]="loading()">
+    ↻
+  </button>
+</div>
+
+@if (loading()) {
+  <div class="loading" role="status">
+    <div class="spinner" aria-hidden="true"></div>
+    <span>Loading videos...</span>
+  </div>
+}
+
+@if (error()) {
+  <div class="error" role="alert">
+    {{ error() }}
+    <button class="retry-btn" (click)="onRefresh()">Retry</button>
+  </div>
+}
+
+@if (isOffline()) {
+  <div class="offline-banner" role="status">📡 You are offline</div>
+}
+
+<div class="video-grid" [class.vertical-grid]="isTallGrid()">
+  @for (video of paginatedVideos(); track video.sNo) {
+    <div class="video-cell">
+      <app-video-player [item]="video" [vertical]="isVerticalVideo(video)" />
+      <a
+        class="detail-link"
+        [routerLink]="'/video/' + encodeId(video)"
+        aria-label="Open video details"
+      >
+        View Details →
+      </a>
+    </div>
+  } @empty {
+    @if (!loading()) {
+      <p class="empty">No videos found</p>
+    }
+  }
+</div>
+
+@if (totalPages() > 1 && !isOffline()) {
+  <nav class="pagination" aria-label="Video pagination">
+    <button
+      class="page-btn nav-btn"
+      [disabled]="currentPage() === 1"
+      (click)="goToPage(currentPage() - 1)"
+      aria-label="Previous page"
+    >
+      ←
+    </button>
+    @for (page of pageNumbers(); track $index) {
+      @if (page === -1) {
+        <span class="page-ellipsis">…</span>
+      } @else {
+        <button
+          class="page-btn page-num"
+          [class.active]="page === currentPage()"
+          (click)="goToPage(page)"
+          [attr.aria-label]="'Page ' + page"
+          [attr.aria-current]="page === currentPage() ? 'page' : null"
+        >
+          {{ page }}
+        </button>
+      }
+    }
+    <button
+      class="page-btn nav-btn"
+      [disabled]="currentPage() === totalPages()"
+      (click)="goToPage(currentPage() + 1)"
+      aria-label="Next page"
+    >
+      →
+    </button>
+  </nav>
+}

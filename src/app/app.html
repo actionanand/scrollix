@@ -1,3 +1,15 @@
-<div>Scrollix App</div>
+<app-header />
 
-<router-outlet />
+<nav class="tab-nav" aria-label="Content tabs">
+  <a routerLink="/videos" routerLinkActive="active" class="tab-link">Videos</a>
+  <a routerLink="/posts" routerLinkActive="active" class="tab-link">Posts</a>
+  @if (auth.isLoggedIn()) {
+    <a routerLink="/support" routerLinkActive="active" class="tab-link">Support</a>
+  }
+</nav>
+
+<main class="content">
+  <router-outlet />
+</main>
+
+<app-toast />

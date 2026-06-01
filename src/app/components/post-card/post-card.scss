@@ -1,0 +1,178 @@
+.post-card {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  padding: 1rem;
+  transition: box-shadow 0.2s;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  }
+}
+
+.post-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.post-embed {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+
+  iframe {
+    width: 100%;
+    height: 500px;
+    border: none;
+  }
+}
+
+.post-link-card {
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background: #e9ecef;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #4361ee;
+    outline-offset: 2px;
+  }
+}
+
+.post-url {
+  font-size: 0.85rem;
+  color: #4361ee;
+  word-break: break-all;
+}
+
+.post-desc {
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.preview-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  color: #888;
+  font-size: 0.85rem;
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e0e0e0;
+    border-top-color: #4361ee;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.preview-card {
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  overflow: hidden;
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+  transition: box-shadow 0.15s;
+
+  &:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #4361ee;
+    outline-offset: 2px;
+  }
+}
+
+.preview-image {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-info {
+  padding: 0.75rem;
+}
+
+.preview-logo {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  margin-bottom: 0.35rem;
+  display: block;
+}
+
+.preview-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 0.25rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.preview-desc-text {
+  font-size: 0.8rem;
+  color: #666;
+  line-height: 1.35;
+  margin-bottom: 0.35rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.preview-domain {
+  font-size: 0.75rem;
+  color: #999;
+  text-transform: lowercase;
+}
+
+.open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  background: #fafafa;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background: #f0f0f0;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #4361ee;
+    outline-offset: 1px;
+  }
+}

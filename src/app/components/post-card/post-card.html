@@ -1,0 +1,64 @@
+<div class="post-card">
+  @if (item().title) {
+    <h3 class="post-title">{{ item().title }}</h3>
+  }
+  @if (isFacebookPost()) {
+    <div class="post-embed">
+      <iframe
+        [src]="embedUrl()"
+        scrolling="no"
+        allowTransparency="true"
+        allow="encrypted-media"
+        [title]="item().title || 'Post ' + item().sNo"
+      ></iframe>
+    </div>
+  } @else {
+    @let p = preview();
+    @if (previewLoading()) {
+      <div class="preview-loading">
+        <div class="spinner"></div>
+        <span>Loading preview...</span>
+      </div>
+    } @else if (p) {
+      <div
+        class="preview-card"
+        (click)="openPost()"
+        role="link"
+        tabindex="0"
+        (keydown.enter)="openPost()"
+      >
+        @if (p.image) {
+          <img [src]="p.image" [alt]="p.title" class="preview-image" loading="lazy" />
+        }
+        <div class="preview-info">
+          @if (p.logo) {
+            <img [src]="p.logo" alt="" class="preview-logo" loading="lazy" />
+          }
+          @if (p.title) {
+            <h4 class="preview-title">{{ p.title }}</h4>
+          }
+          @if (p.description) {
+            <p class="preview-desc-text">{{ p.description }}</p>
+          }
+          <span class="preview-domain">{{ getDomain(item().url) }}</span>
+        </div>
+      </div>
+    } @else {
+      <div
+        class="post-link-card"
+        (click)="openPost()"
+        role="link"
+        tabindex="0"
+        (keydown.enter)="openPost()"
+      >
+        <p class="post-url">{{ item().url }}</p>
+      </div>
+    }
+  }
+  @if (item().desc) {
+    <p class="post-desc">{{ item().desc }}</p>
+  }
+  <button class="ctrl-btn open-btn" (click)="openPost()" aria-label="Open post in new tab">
+    ↗ Open Post
+  </button>
+</div>

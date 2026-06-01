@@ -1,0 +1,69 @@
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #4361ee;
+  color: #fff;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.app-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.auth-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.welcome {
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.85rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    transform 0.1s;
+
+  &:active {
+    transform: scale(0.97);
+  }
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+}
+
+.btn-login {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.btn-logout {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.25);
+  }
+}
