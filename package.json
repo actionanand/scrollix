@@ -16,7 +16,11 @@
     "format:check": "prettier --config ./.prettierrc --list-different \"src/{app,environments,assets}/**/*{.ts,.js,.json,.css,.scss}\"",
     "format:all": "prettier --config ./.prettierrc --write \"src/{app,environments,assets}/**/*{.ts,.js,.json,.css,.scss}\"",
     "lint": "ng lint",
-    "prepare": "husky"
+    "prepare": "husky",
+    "android:version": "node scripts/bump-android-version.js",
+    "android:version:patch": "node scripts/bump-android-version.js --patch",
+    "android:version:minor": "node scripts/bump-android-version.js --minor",
+    "android:version:major": "node scripts/bump-android-version.js --major"
   },
   "prettier": {
     "printWidth": 100,
