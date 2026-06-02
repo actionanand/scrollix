@@ -3,7 +3,7 @@ name: GitHub Pages - Angular 21.0.3
 on:
   push:
     branches:
-      - main
+      - main-github
 
 permissions:
   contents: write
@@ -22,6 +22,12 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Inject PASSWORD_HASH into environment.ts
+        env:
+          PASSWORD_HASH: ${{ secrets.PASSWORD_HASH }}
+        run: |
+          sed -i "s|PASSWORD_HASH_PLACEHOLDER|${{ env.PASSWORD_HASH }}|g" src/environments/environment.ts
 
       - name: Extract repository name from package.json
         id: package
