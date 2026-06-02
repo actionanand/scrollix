@@ -1,0 +1,250 @@
+name: Android APK & AAB Build
+
+on:
+  push:
+    branches:
+      - main-android
+
+permissions:
+  contents: write
+
+# ── Android SDK version targets — edit here when Google requires a new target ──
+env:
+  MIN_SDK_VERSION: 24 # Android 7.0 (Nougat) — update when Google mandates a newer minimum (currently 24 for Play Store)
+  TARGET_SDK_VERSION: 35 # Android 15 (UpsideDownCake) — update when Google mandates a newer target
+  # FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true # Opt into Node.js 24 for all actions (required from June 2026)
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.11.1'
+
+      - name: Setup Java (JDK 21)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install project dependencies
+        run: npm install
+
+      - name: Inject secrets into environment.ts
+        env:
+          PASSWORD_HASH: ${{ secrets.PASSWORD_HASH }}
+          TOKEN_HASH: ${{ secrets.TOKEN_HASH }}
+        run: |
+          sed -i "s|PASSWORD_HASH_PLACEHOLDER|$PASSWORD_HASH|g" src/environments/environment.ts
+          sed -i "s|TOKEN_PLACEHOLDER|$TOKEN_HASH|g" src/environments/environment.ts
+
+      - name: Build Angular app (production)
+        run: npm run build -- --configuration=production
+
+      - name: Install Capacitor CLI & Android platform
+        run: npm install --no-save @capacitor/cli @capacitor/core @capacitor/android
+
+      - name: Install image processing tools
+        run: sudo apt-get install -y imagemagick
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Patch build.gradle to accept version properties
+        working-directory: android/app
+        run: |
+          # Replace hardcoded versionCode/versionName with Gradle properties (fallback to defaults)
+          sed -i \
+            's/versionCode [0-9]*/versionCode project.hasProperty("versionCode") ? project.versionCode.toInteger() : 1/' \
+            build.gradle
+          sed -i \
+            's/versionName "[^"]*"/versionName project.hasProperty("versionName") ? project.versionName : "1.0.0"/' \
+            build.gradle
+          echo "✅ build.gradle patched for dynamic versioning"
+          # Patch minSdkVersion and targetSdkVersion in variables.gradle
+          sed -i "s/minSdkVersion = .*/minSdkVersion = $MIN_SDK_VERSION/" ../variables.gradle
+          sed -i "s/targetSdkVersion = .*/targetSdkVersion = $TARGET_SDK_VERSION/" ../variables.gradle
+          echo "✅ variables.gradle patched: minSdk=$MIN_SDK_VERSION targetSdk=$TARGET_SDK_VERSION"
+
+      - name: Sync web assets to Android
+        run: npx cap sync android
+
+      - name: Inject app icon
+        run: |
+          # Copy source icon to all required Android mipmap densities
+          ICON_SRC="public/expenzo.png"
+          # Remove adaptive icon XML so Android uses our PNG directly
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26
+          declare -A SIZES=(
+            ["mipmap-mdpi"]=48
+            ["mipmap-hdpi"]=72
+            ["mipmap-xhdpi"]=96
+            ["mipmap-xxhdpi"]=144
+            ["mipmap-xxxhdpi"]=192
+          )
+          for DIR in "${!SIZES[@]}"; do
+            SIZE=${SIZES[$DIR]}
+            mkdir -p "android/app/src/main/res/$DIR"
+            convert "$ICON_SRC" -resize "${SIZE}x${SIZE}" \
+              "android/app/src/main/res/$DIR/ic_launcher.png"
+            convert "$ICON_SRC" -resize "${SIZE}x${SIZE}" \
+              "android/app/src/main/res/$DIR/ic_launcher_round.png"
+            convert "$ICON_SRC" -resize "${SIZE}x${SIZE}" \
+              "android/app/src/main/res/$DIR/ic_launcher_foreground.png"
+          done
+          # Play Store icon (512x512) — save for reference
+          convert "$ICON_SRC" -resize 512x512 releases/playstore-icon.png 2>/dev/null || true
+          echo "✅ Icons injected"
+
+      - name: Auto-bump versionCode
+        run: |
+          node scripts/bump-android-version.js
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add android-version.json
+          git commit -m "chore: auto-bump android versionCode [skip ci]"
+          git push
+
+      - name: Build APK & AAB with Gradle
+        working-directory: android
+        run: |
+          VERSION_CODE=$(node -p "require('../android-version.json').versionCode")
+          VERSION_NAME=$(node -p "require('../android-version.json').versionName")
+          echo "Building versionCode=$VERSION_CODE versionName=$VERSION_NAME"
+          ./gradlew assembleRelease bundleRelease \
+            -PversionCode="$VERSION_CODE" \
+            -PversionName="$VERSION_NAME"
+
+      - name: Decode keystore
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [[ -n "$KEYSTORE_BASE64" ]]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > android/app/release-keystore.jks
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Signed APK ──
+      - name: Sign APK
+        id: sign_apk
+        if: steps.keystore.outputs.available == 'true'
+        continue-on-error: true
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          UNSIGNED_APK=$(find android/app/build -name "*-release-unsigned.apk" | head -1)
+          ALIGNED_APK="android/app/build/outputs/apk/release/expenzo-release.apk"
+
+          BUILD_TOOLS_DIR="${ANDROID_HOME}/build-tools/$(ls "${ANDROID_HOME}/build-tools/" | sort -V | tail -1)"
+
+          "$BUILD_TOOLS_DIR/zipalign" -v 4 "$UNSIGNED_APK" "$ALIGNED_APK"
+
+          "$BUILD_TOOLS_DIR/apksigner" sign \
+            --ks android/app/release-keystore.jks \
+            --ks-pass "pass:${KEYSTORE_PASSWORD}" \
+            --ks-key-alias "${KEY_ALIAS}" \
+            --key-pass "pass:${KEY_PASSWORD}" \
+            "$ALIGNED_APK"
+
+          echo "✅ APK signed successfully"
+
+      # ── Unsigned APK fallback ──
+      - name: Copy unsigned APK (fallback)
+        if: steps.keystore.outputs.available != 'true' || steps.sign_apk.outcome == 'failure'
+        run: |
+          UNSIGNED_APK=$(find android/app/build -name "*-release-unsigned.apk" | head -1)
+          cp "$UNSIGNED_APK" android/app/build/outputs/apk/release/expenzo-release.apk
+          if [[ "${{ steps.sign_apk.outcome }}" == "failure" ]]; then
+            echo "::warning title=Unsigned APK::Signing failed — keystore password mismatch or corrupt keystore. See ANDROID.md to regenerate the keystore. APK is unsigned."
+          else
+            echo "::warning title=Unsigned APK::KEYSTORE_BASE64 secret not set. APK is unsigned."
+          fi
+
+      # ── Signed AAB ──
+      - name: Sign AAB
+        id: sign_aab
+        if: steps.keystore.outputs.available == 'true'
+        continue-on-error: true
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          UNSIGNED_AAB=$(find android/app/build -name "*-release.aab" | head -1)
+          SIGNED_AAB="android/app/build/outputs/bundle/release/expenzo-release.aab"
+
+          jarsigner -verbose \
+            -keystore android/app/release-keystore.jks \
+            -storepass "${KEYSTORE_PASSWORD}" \
+            -keypass "${KEY_PASSWORD}" \
+            -signedjar "$SIGNED_AAB" \
+            "$UNSIGNED_AAB" \
+            "${KEY_ALIAS}"
+
+          echo "✅ AAB signed successfully"
+
+      # ── Unsigned AAB fallback ──
+      - name: Copy unsigned AAB (fallback)
+        if: steps.keystore.outputs.available != 'true' || steps.sign_aab.outcome == 'failure'
+        run: |
+          UNSIGNED_AAB=$(find android/app/build -name "*-release.aab" | head -1)
+          cp "$UNSIGNED_AAB" android/app/build/outputs/bundle/release/expenzo-release.aab
+          if [[ "${{ steps.sign_aab.outcome }}" == "failure" ]]; then
+            echo "::warning title=Unsigned AAB::Signing failed — keystore password mismatch or corrupt keystore. See ANDROID.md to regenerate the keystore. AAB is unsigned."
+          else
+            echo "::warning title=Unsigned AAB::KEYSTORE_BASE64 secret not set. AAB is unsigned."
+          fi
+
+      # ── Commit releases to branch ──
+      - name: Commit APK & AAB to branch
+        run: |
+          mkdir -p releases
+          # Remove old builds before copying new ones
+          rm -f releases/expenzo-release.apk releases/expenzo-release.aab
+          cp android/app/build/outputs/apk/release/expenzo-release.apk releases/expenzo-release.apk
+          cp android/app/build/outputs/bundle/release/expenzo-release.aab releases/expenzo-release.aab
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase --autostash
+          git add releases/
+          git diff --cached --quiet || git commit -m "build: update APK & AAB releases [skip ci]"
+          git push
+
+      # ── Upload artifacts ──
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: expenzo-release-apk
+          path: android/app/build/outputs/apk/release/expenzo-release.apk
+          retention-days: 30
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: expenzo-release-aab
+          path: android/app/build/outputs/bundle/release/expenzo-release.aab
+          retention-days: 30
+
+      # ── GitHub Release (on tag push) ──
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            android/app/build/outputs/apk/release/expenzo-release.apk
+            android/app/build/outputs/bundle/release/expenzo-release.aab
