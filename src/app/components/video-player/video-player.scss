@@ -44,7 +44,7 @@
 
   &--vertical {
     aspect-ratio: 9 / 16;
-    width: min(100%, calc((100vh - 9rem) * 9 / 16));
+    // width: min(100%, calc((100vh - 9rem) * 9 / 16)); // issue with instagram embeds
     margin-inline: auto;
   }
 }
