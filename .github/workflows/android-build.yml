@@ -81,7 +81,7 @@ jobs:
       - name: Inject app icon
         run: |
           # Copy source icon to all required Android mipmap densities
-          ICON_SRC="public/expenzo.png"
+          ICON_SRC="public/scrollix.png"
           # Remove adaptive icon XML so Android uses our PNG directly
           rm -rf android/app/src/main/res/mipmap-anydpi-v26
           declare -A SIZES=(
@@ -147,7 +147,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           UNSIGNED_APK=$(find android/app/build -name "*-release-unsigned.apk" | head -1)
-          ALIGNED_APK="android/app/build/outputs/apk/release/expenzo-release.apk"
+          ALIGNED_APK="android/app/build/outputs/apk/release/scrollix-release.apk"
 
           BUILD_TOOLS_DIR="${ANDROID_HOME}/build-tools/$(ls "${ANDROID_HOME}/build-tools/" | sort -V | tail -1)"
 
@@ -167,7 +167,7 @@ jobs:
         if: steps.keystore.outputs.available != 'true' || steps.sign_apk.outcome == 'failure'
         run: |
           UNSIGNED_APK=$(find android/app/build -name "*-release-unsigned.apk" | head -1)
-          cp "$UNSIGNED_APK" android/app/build/outputs/apk/release/expenzo-release.apk
+          cp "$UNSIGNED_APK" android/app/build/outputs/apk/release/scrollix-release.apk
           if [[ "${{ steps.sign_apk.outcome }}" == "failure" ]]; then
             echo "::warning title=Unsigned APK::Signing failed — keystore password mismatch or corrupt keystore. See ANDROID.md to regenerate the keystore. APK is unsigned."
           else
@@ -185,7 +185,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           UNSIGNED_AAB=$(find android/app/build -name "*-release.aab" | head -1)
-          SIGNED_AAB="android/app/build/outputs/bundle/release/expenzo-release.aab"
+          SIGNED_AAB="android/app/build/outputs/bundle/release/scrollix-release.aab"
 
           jarsigner -verbose \
             -keystore android/app/release-keystore.jks \
@@ -202,7 +202,7 @@ jobs:
         if: steps.keystore.outputs.available != 'true' || steps.sign_aab.outcome == 'failure'
         run: |
           UNSIGNED_AAB=$(find android/app/build -name "*-release.aab" | head -1)
-          cp "$UNSIGNED_AAB" android/app/build/outputs/bundle/release/expenzo-release.aab
+          cp "$UNSIGNED_AAB" android/app/build/outputs/bundle/release/scrollix-release.aab
           if [[ "${{ steps.sign_aab.outcome }}" == "failure" ]]; then
             echo "::warning title=Unsigned AAB::Signing failed — keystore password mismatch or corrupt keystore. See ANDROID.md to regenerate the keystore. AAB is unsigned."
           else
@@ -214,9 +214,9 @@ jobs:
         run: |
           mkdir -p releases
           # Remove old builds before copying new ones
-          rm -f releases/expenzo-release.apk releases/expenzo-release.aab
-          cp android/app/build/outputs/apk/release/expenzo-release.apk releases/expenzo-release.apk
-          cp android/app/build/outputs/bundle/release/expenzo-release.aab releases/expenzo-release.aab
+          rm -f releases/scrollix-release.apk releases/scrollix-release.aab
+          cp android/app/build/outputs/apk/release/scrollix-release.apk releases/scrollix-release.apk
+          cp android/app/build/outputs/bundle/release/scrollix-release.aab releases/scrollix-release.aab
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -229,15 +229,15 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: expenzo-release-apk
-          path: android/app/build/outputs/apk/release/expenzo-release.apk
+          name: scrollix-release-apk
+          path: android/app/build/outputs/apk/release/scrollix-release.apk
           retention-days: 30
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
         with:
-          name: expenzo-release-aab
-          path: android/app/build/outputs/bundle/release/expenzo-release.aab
+          name: scrollix-release-aab
+          path: android/app/build/outputs/bundle/release/scrollix-release.aab
           retention-days: 30
 
       # ── GitHub Release (on tag push) ──
@@ -246,5 +246,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            android/app/build/outputs/apk/release/expenzo-release.apk
-            android/app/build/outputs/bundle/release/expenzo-release.aab
+            android/app/build/outputs/apk/release/scrollix-release.apk
+            android/app/build/outputs/bundle/release/scrollix-release.aab
