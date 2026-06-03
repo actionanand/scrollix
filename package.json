@@ -17,7 +17,7 @@
     "format:all": "prettier --config ./.prettierrc --write \"src/{app,environments,assets}/**/*{.ts,.js,.json,.css,.scss}\"",
     "lint": "ng lint",
     "prepare": "husky",
-    "generate-keystore": "node generate-keystore.mjs",
+    "generate-keystore": "node scripts/generate-keystore.mjs",
     "android:version": "node scripts/bump-android-version.js",
     "android:version:patch": "node scripts/bump-android-version.js --patch",
     "android:version:minor": "node scripts/bump-android-version.js --minor",
