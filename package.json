@@ -18,6 +18,7 @@
     "lint": "ng lint",
     "prepare": "husky",
     "generate-keystore": "node scripts/generate-keystore.mjs",
+    "keystore:type": "node scripts/detect-keystore-format.mjs release-keystore.jks",
     "android:version": "node scripts/bump-android-version.js",
     "android:version:patch": "node scripts/bump-android-version.js --patch",
     "android:version:minor": "node scripts/bump-android-version.js --minor",
