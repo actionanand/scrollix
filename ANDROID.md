@@ -2,6 +2,8 @@
 
 This project uses **Capacitor** (installed only in CI) to wrap the Angular web app into a native Android APK. No Android tooling is required locally — everything runs in a GitHub Actions workflow.
 
+> **🔐 This project uses PKCS12 format for keystore signing.**
+
 ---
 
 ## Architecture
@@ -47,7 +49,7 @@ Add these secrets in **Settings → Secrets and variables → Actions**:
 | ------------------- | -------------- | ----------------------------------------------------- |
 | `PASSWORD_HASH`     | Yes            | App password hash (already used by gh-pages workflow) |
 | `TOKEN_HASH`        | Yes            | App token (already used by gh-pages workflow)         |
-| `KEYSTORE_BASE64`   | For signed APK | Base64-encoded `.jks` keystore file                   |
+| `KEYSTORE_BASE64`   | For signed APK | Base64-encoded keystore file (`.jks` or `.p12`)       |
 | `KEYSTORE_PASSWORD` | For signed APK | Keystore password                                     |
 | `KEY_ALIAS`         | For signed APK | Key alias inside the keystore                         |
 | `KEY_PASSWORD`      | For signed APK | Key password                                          |
@@ -56,17 +58,60 @@ Add these secrets in **Settings → Secrets and variables → Actions**:
 
 ---
 
+## Keystore Formats: PKCS12 vs JKS
+
+Android signing supports two keystore formats:
+
+| Format     | Type                                                  | Recommended   |
+| ---------- | ----------------------------------------------------- | ------------- |
+| **PKCS12** | Open industry standard (RFC 7292); default in Java 9+ | ✅ Yes        |
+| **JKS**    | Proprietary Oracle format; legacy                     | ⚠️ Deprecated |
+
+**PKCS12** (`.p12` or `.jks`) is the modern standard — it's cross-platform, widely supported, and what Java's `keytool` now defaults to. **JKS** is Oracle-proprietary and deprecated since Java 9; generating a JKS keystore will produce a migration warning. Both formats are supported by `apksigner` and `jarsigner`, so switching to PKCS12 requires **no changes** to your CI workflow.
+
+> **🔐 This project uses PKCS12 format for keystore signing.**
+
+### Why PKCS12 has one password, JKS has two
+
+**JKS** was designed with two separate password layers:
+
+- **`KEYSTORE_PASSWORD`** — unlocks the keystore _container_ (the file itself)
+- **`KEY_PASSWORD`** — unlocks the individual _private key entry_ inside it
+
+This separation was intentional — a single JKS file could hold multiple keys owned by different people, each protected by their own key password.
+
+**PKCS12** uses a single passphrase that covers everything — the container and the private key together. Per-entry passwords are not supported in the same way.
+
+**In practice for Android:** `apksigner` and `jarsigner` still accept a `--key-pass` / `-keypass` flag for PKCS12 keystores — they simply expect it to equal the store password. So your CI workflow stays the same; just set `KEY_PASSWORD` to the **same value** as `KEYSTORE_PASSWORD` in GitHub Secrets when using PKCS12.
+
+### Check your keystore type
+
+```bash
+keytool -list -v -keystore release-keystore.jks
+```
+
+Look for the `Keystore type:` line in the output:
+
+```
+Keystore type: PKCS12   ✅ modern format
+Keystore type: JKS      ⚠️ legacy format — consider migrating
+```
+
+---
+
 ## How to Create & Sign a Keystore
 
-### Step 1: Generate a keystore
+### Method 1 — `keytool` (Java, PKCS12) ✅ Recommended
+
+**> 🔐 This project uses PKCS12. Use `-storetype PKCS12` as shown below.**
 
 ```bash
 keytool -genkeypair \
   -v \
-  -storetype JKS \
+  -storetype PKCS12 \
   -keyalg RSA \
   -keysize 2048 \
-  -validity 10000 \
+  -validity 36500 \
   -storepass 'YOUR_STORE_PASSWORD' \
   -keypass 'YOUR_KEY_PASSWORD' \
   -alias scrollix \
@@ -74,9 +119,75 @@ keytool -genkeypair \
   -dname "CN=Scrollix, OU=Mobile, O=Scrollix, L=City, ST=State, C=IN"
 ```
 
+> The file can be named `.jks` or `.p12` — the extension doesn't affect the format. Keeping `.jks` means no changes are needed anywhere else in the workflow.
+
 > **Important:** Always wrap passwords in **single quotes** (`'...'`) in bash. Double quotes allow `$`, `!`, `@` etc. to be interpreted as special characters, which silently changes the password.
 
-### Step 2: Base64-encode it for GitHub Secrets
+---
+
+### Method 2 — `keytool` (Java, legacy JKS)
+
+> ⚠️ This will generate a deprecation warning. Prefer Method 1 (PKCS12).
+
+```bash
+keytool -genkeypair \
+  -v \
+  -storetype JKS \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 36500 \
+  -storepass 'YOUR_STORE_PASSWORD' \
+  -keypass 'YOUR_KEY_PASSWORD' \
+  -alias scrollix \
+  -keystore release-keystore.jks \
+  -dname "CN=Scrollix, OU=Mobile, O=Scrollix, L=City, ST=State, C=IN"
+```
+
+---
+
+### Method 3 — Node.js script (`scripts/generate-keystore.mjs`)
+
+A Node.js alternative — no Java required. Uses the `node-forge` library.
+
+**Install the dependency:**
+
+```bash
+npm i -D node-forge
+```
+
+**Run via npm script:**
+
+```bash
+npm run generate-keystore
+```
+
+This runs `node scripts/generate-keystore.mjs` (configured in `package.json` as `"generate-keystore": "node generate-keystore.mjs"`). It generates a PKCS12 keystore saved as `release-keystore.jks`.
+
+---
+
+### Migrate existing JKS → PKCS12
+
+If you already have a `release-keystore.jks` in JKS format, convert it in-place:
+
+```bash
+keytool -importkeystore \
+  -srckeystore release-keystore.jks \
+  -destkeystore release-keystore.jks \
+  -deststoretype pkcs12 \
+  -srcstorepass 'YOUR_STORE_PASSWORD' \
+  -deststorepass 'YOUR_STORE_PASSWORD'
+```
+
+`keytool` handles this safely via a temp file. Verify the result afterwards:
+
+```bash
+keytool -list -v -keystore release-keystore.jks
+# Should show: Keystore type: PKCS12
+```
+
+---
+
+### Step 2: Base64-encode for GitHub Secrets
 
 ```bash
 # Option A — save to a file (easier to copy)
@@ -88,6 +199,8 @@ base64 -w 0 release-keystore.jks
 
 Open `keystore.b64.txt` (or copy terminal output) and save it as the `KEYSTORE_BASE64` secret.
 
+---
+
 ### Step 3: Add remaining secrets
 
 | Secret              | Value                 |
@@ -96,10 +209,38 @@ Open `keystore.b64.txt` (or copy terminal output) and save it as the `KEYSTORE_B
 | `KEY_ALIAS`         | `scrollix`            |
 | `KEY_PASSWORD`      | `YOUR_KEY_PASSWORD`   |
 
+---
+
+### Verify & decode `KEYSTORE_BASE64` locally
+
+Load the secret from the encoded file and verify it decodes correctly:
+
+```bash
+# Load into an environment variable
+export KEYSTORE_BASE64="$(cat keystore.b64.txt)"
+
+# Shorthand
+export KEYSTORE_BASE64=$(<keystore.b64.txt)
+
+# Check it's non-empty (prints character count)
+echo "${#KEYSTORE_BASE64}"
+
+# Print the raw base64 string
+echo "$KEYSTORE_BASE64"
+
+# Decode back to the keystore file — produces identical bytes regardless of JKS or PKCS12
+echo "$KEYSTORE_BASE64" | base64 -d > release-keystore.p12
+```
+
+> Decoding always produces the same bytes as the original file. Whether the source was `.jks` or `.p12`, the round-trip `base64 encode → decode` is lossless.
+
+---
+
 ### Important
 
-- **Never commit** `release-keystore.jks` to the repo.
+- **Never commit** `release-keystore.jks` or `release-keystore.p12` to the repo.
 - **Back up** the keystore file securely. Losing it means you can never update your Play Store app.
+- The key should be valid for a long time — **36500 days (~100 years)** is a safe choice. Android signing keys **cannot be renewed or replaced** once your app is published.
 
 ---
 
