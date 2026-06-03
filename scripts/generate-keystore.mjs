@@ -6,8 +6,8 @@
 // with Java 21's strict PKCS12 parser regardless of algorithm choice).
 //
 // Password is never hardcoded — pass it via CLI arg or env var:
-//   npm run generate-keystore -- --password 'An6o13$C@Ll'
-//   KEYSTORE_PASSWORD='An6o13$C@Ll' npm run generate-keystore
+//   npm run generate-keystore -- --password 'Admin@123'
+//   KEYSTORE_PASSWORD='Admin@123' npm run generate-keystore
 //
 // Prerequisites: openssl must be installed.
 //   Check: openssl version
@@ -78,7 +78,7 @@ async function resolvePassword() {
 function run(cmd, env = {}) {
   // Passwords are always passed via env vars, never interpolated into the
   // command string — shell would expand $VAR sequences inside the value,
-  // silently corrupting passwords like 'An6o13$C@Ll' → 'An6o13@Ll'.
+  // silently corrupting passwords like 'Admin$g@123' → 'Admin@123'.
   execSync(cmd, { stdio: 'pipe', env: { ...process.env, ...env } });
 }
 
