@@ -1,73 +1,95 @@
+#!/usr/bin/env node
 // scripts/generate-keystore.mjs
-import forge from 'node-forge';
-import fs from 'fs';
+//
+// Generates a Java-compatible PKCS12 keystore for Android APK/AAB signing.
+// Uses openssl (available on Linux, macOS, WSL) instead of node-forge, because
+// node-forge's PKCS12 writer is not compatible with Java 21's strict PKCS12
+// parser — it causes BadPaddingException / "wrong password" at apksigner time
+// regardless of algorithm choice (3des or aes256).
+//
+// Prerequisites: openssl must be installed (it is on all CI runners and most dev machines).
+// Check with: openssl version
+
+import { execSync } from 'child_process';
+import { existsSync, unlinkSync } from 'fs';
 
 // ── Config — edit these ───────────────────────────────────────────────────────
-const STORE_PASSWORD = 'YOUR_STORE_PASSWORD'; // single passphrase for PKCS12 (covers store + key)
+const STORE_PASSWORD = 'YOUR_STORE_PASSWORD'; // single passphrase (PKCS12: store = key password)
 const KEY_PASSWORD = 'YOUR_KEY_PASSWORD'; // PKCS12 uses a single password; KEY_PASSWORD is ignored by most tools but kept for parity
 const ALIAS = 'scrollix';
 const OUTPUT_FILE = 'release-keystore.jks'; // .jks extension kept for workflow compatibility
 // const VALIDITY_YEARS  = 27;                      // ~10000 days
-const VALIDITY_YEARS = 100; // 100 years — cannot renew Android signing keys
-const DNAME = {
-  CN: 'Scrollix', // Common Name  (app name)
-  O: 'Scrollix', // Organization (app/company name)
-  C: 'IN', // Country code (ISO 3166-1 alpha-2)
-};
+const VALIDITY_DAYS = 36500; // ~100 years — Android signing keys cannot be renewed
+const DNAME = 'CN=Scrollix,O=Scrollix,C=IN';
 // ─────────────────────────────────────────────────────────────────────────────
 
-console.log('🔑 Generating 2048-bit RSA key pair...');
-const keys = forge.pki.rsa.generateKeyPair(2048);
-const cert = forge.pki.createCertificate();
+const KEY_PEM = 'key.pem';
+const CERT_PEM = 'cert.pem';
 
-cert.publicKey = keys.publicKey;
-cert.serialNumber = '01';
-cert.validity.notBefore = new Date();
-cert.validity.notAfter = new Date();
-cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + VALIDITY_YEARS);
+function run(cmd) {
+  execSync(cmd, { stdio: 'pipe' });
+}
 
-const attrs = [
-  { name: 'commonName', value: DNAME.CN },
-  { name: 'organizationName', value: DNAME.O },
-  { name: 'countryName', value: DNAME.C },
-];
-cert.setSubject(attrs);
-cert.setIssuer(attrs);
-cert.sign(keys.privateKey, forge.md.sha256.create());
+function cleanup() {
+  for (const f of [KEY_PEM, CERT_PEM]) {
+    if (existsSync(f)) unlinkSync(f);
+  }
+}
 
-console.log('📦 Assembling PKCS12 bundle...');
+// Verify openssl is available
+try {
+  const ver = execSync('openssl version', { stdio: 'pipe' }).toString().trim();
+  console.log(`🔍 Using ${ver}`);
+} catch {
+  console.error('❌ openssl not found. Install it and try again.');
+  console.error('   macOS : brew install openssl');
+  console.error('   Ubuntu: sudo apt-get install openssl');
+  process.exit(1);
+}
 
-// Pass cert directly (not in an array) so node-forge ≥1.3 correctly sets a
-// matching localKeyId on both the private-key bag and the certificate bag.
-// Java's PKCS12KeyStore uses localKeyId to resolve alias → private key;
-// without it jarsigner throws "key associated with <alias> not a private key".
-//
-// algorithm: 'aes256' → PBES2 + AES-256-CBC, which Java 11–21 parses correctly.
-// '3des' uses a node-forge PBE scheme that diverges from Java's strict PKCS#5 v2
-// implementation and causes BadPaddingException / "wrong password" at signing time.
-const p12 = forge.pkcs12.toPkcs12Asn1(
-  keys.privateKey,
-  cert, // ← single cert object, NOT an array
-  STORE_PASSWORD,
-  {
-    algorithm: 'aes256', // Java 11+ compatible; do NOT use '3des'
-    friendlyName: ALIAS,
-    generateLocalKeyId: true, // links key bag ↔ cert bag by localKeyId
-  },
-);
+try {
+  // Step 1 — RSA private key
+  console.log('🔑 Generating 2048-bit RSA private key...');
+  run(`openssl genrsa -out ${KEY_PEM} 2048`);
 
-const der = forge.asn1.toDer(p12).getBytes();
-const buf = Buffer.from(der, 'binary');
-fs.writeFileSync(OUTPUT_FILE, buf);
+  // Step 2 — Self-signed certificate
+  console.log('📄 Generating self-signed certificate...');
+  run(
+    `openssl req -new -x509 \
+      -key ${KEY_PEM} \
+      -out ${CERT_PEM} \
+      -days ${VALIDITY_DAYS} \
+      -subj "/${DNAME.replace(/,/g, '/')}"`,
+  );
 
-console.log(`✅  Written ${buf.length} bytes → ${OUTPUT_FILE}`);
-console.log(`    Alias    : ${ALIAS}`);
-console.log(`    Valid    : ${VALIDITY_YEARS} years`);
-console.log(`    Format   : PKCS12 / AES-256`);
-console.log();
-console.log('Verify with:');
-console.log(`  keytool -list -v -keystore ${OUTPUT_FILE} -storepass 'YOUR_STORE_PASSWORD'`);
-console.log('  Look for → Keystore type: PKCS12 | Entry type: PrivateKeyEntry');
-console.log();
-console.log('Next — encode for GitHub Secrets:');
-console.log(`  base64 -w 0 ${OUTPUT_FILE} > keystore.b64.txt`);
+  // Step 3 — Pack into PKCS12
+  // openssl pkcs12 -export produces PBES2/PBKDF2/AES-256-CBC — fully compatible
+  // with Java 11–21's PKCS12KeyStore and apksigner / jarsigner.
+  console.log('📦 Assembling PKCS12 bundle...');
+  if (existsSync(OUTPUT_FILE)) unlinkSync(OUTPUT_FILE);
+  run(
+    `openssl pkcs12 -export \
+      -in ${CERT_PEM} \
+      -inkey ${KEY_PEM} \
+      -out ${OUTPUT_FILE} \
+      -name "${ALIAS}" \
+      -passout "pass:${STORE_PASSWORD}"`,
+  );
+
+  cleanup();
+
+  console.log(`\n✅  Written → ${OUTPUT_FILE}`);
+  console.log(`    Alias    : ${ALIAS}`);
+  console.log(`    Valid    : ${VALIDITY_DAYS} days (~${Math.round(VALIDITY_DAYS / 365)} years)`);
+  console.log(`    Format   : PKCS12 / PBES2 / AES-256-CBC (Java 11–21 compatible)`);
+  console.log(`\nVerify:`);
+  console.log(`  keytool -list -v -keystore ${OUTPUT_FILE} -storepass 'YOUR_STORE_PASSWORD'`);
+  console.log(`  Look for → Keystore type: PKCS12 | Entry type: PrivateKeyEntry`);
+  console.log(`\nNext — encode for GitHub Secrets:`);
+  console.log(`  base64 -w 0 ${OUTPUT_FILE} > keystore.b64.txt`);
+} catch (err) {
+  cleanup();
+  console.error('\n❌ Keystore generation failed:');
+  console.error(err.message);
+  process.exit(1);
+}
