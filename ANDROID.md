@@ -97,6 +97,25 @@ Keystore type: PKCS12   ✅ modern format
 Keystore type: JKS      ⚠️ legacy format — consider migrating
 ```
 
+```bash
+openssl pkcs12 -info -in release-keystore.jks -noout
+```
+
+Look for the `MAC: sha256` line in the output:
+
+```
+MAC: sha256, Iteration 2048
+PKCS7 Data
+```
+
+If you get error, then it's JKS
+
+or
+
+```bash
+npm run keystore:type
+```
+
 ---
 
 ## How to Create & Sign a Keystore
@@ -147,21 +166,51 @@ keytool -genkeypair \
 
 ### Method 3 — Node.js script (`scripts/generate-keystore.mjs`)
 
-A Node.js alternative — no Java required. Uses the `node-forge` library.
+A Node.js alternative — no Java required. Uses openssl, which is typically available on Ubuntu/WSL.
 
-**Install the dependency:**
+This runs `node scripts/generate-keystore.mjs` (configured in `package.json` as `"generate-keystore": "node generate-keystore.mjs"`). It generates a PKCS12 keystore saved as `release-keystore.jks`.
+
+There are three ways to generate PKCS12 keystore
+
+- Method 1 — CLI arg (most explicit, single quotes around password in the terminal to protect the $)
 
 ```bash
-npm i -D node-forge
+`npm run generate-keystore -- --password 'YOUR_STORE_PASSWORD'`
 ```
 
-**Run via npm script:**
+Say `YOUR_STORE_PASSWORD` is `Admin@123`
+
+```bash
+`npm run generate-keystore -- --password 'Admin@123'`
+```
+
+- Method 2 — env var (useful in scripts)
+
+```bash
+KEYSTORE_PASSWORD='Admin@123' npm run generate-keystore
+```
+
+- Method 3 — interactive prompt (input is hidden, nothing echoed)
 
 ```bash
 npm run generate-keystore
+# Enter keystore password: ← type here, nothing shown
 ```
 
-This runs `node scripts/generate-keystore.mjs` (configured in `package.json` as `"generate-keystore": "node generate-keystore.mjs"`). It generates a PKCS12 keystore saved as `release-keystore.jks`.
+Verify generated keystore (must use single quotes around password)
+
+```bash
+keytool -list -v -keystore release-keystore.jks -storepass 'Admin@123'
+```
+
+```bash
+openssl pkcs12 -info -in release-keystore.jks -passin pass:'Admin@123' -clcerts  -nokeys
+```
+
+- `-passin` → keystore password
+- `-nokeys` → do not output private key (avoids PEM handling)
+- `-clcerts` → show certificate only
+- `-nodes` → don't try to encrypt PEM output
 
 ---
 
