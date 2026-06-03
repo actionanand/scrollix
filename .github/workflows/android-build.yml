@@ -136,6 +136,22 @@ jobs:
             echo "available=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # ── Detect keystore type & normalise KEY_PASSWORD for PKCS12 ──────────────
+      # PKCS12 uses a single passphrase: the key password MUST equal the store
+      # password. JKS allows them to differ. We detect the type here and write
+      # the effective key password to GITHUB_ENV so both signing steps use it
+      # without the caller having to keep two secrets in sync.
+      - name: Detect keystore type
+        id: ks_type
+        if: steps.keystore.outputs.available == 'true'
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          # keytool -list prints "Keystore type: PKCS12" or "Keystore type: JKS"
+          KS_TYPE=$(keytool -list             -keystore android/app/release-keystore.jks             -storepass:env KEYSTORE_PASSWORD             2>/dev/null | grep -i "Keystore type" | awk '{print $NF}')
+          echo "type=$KS_TYPE" >> "$GITHUB_OUTPUT"
+          echo "Detected keystore type: $KS_TYPE"
+
       # ── Signed APK ──
       - name: Sign APK
         id: sign_apk
@@ -144,7 +160,9 @@ jobs:
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          # For PKCS12 the key password must equal the store password.
+          # For JKS it can differ — KEY_PASSWORD secret is used as-is.
+          KEY_PASSWORD: ${{ steps.ks_type.outputs.type == 'PKCS12' && secrets.KEYSTORE_PASSWORD || secrets.KEY_PASSWORD }}
         run: |
           UNSIGNED_APK=$(find android/app/build -name "*-release-unsigned.apk" | head -1)
           ALIGNED_APK="android/app/build/outputs/apk/release/scrollix-release.apk"
@@ -153,14 +171,18 @@ jobs:
 
           "$BUILD_TOOLS_DIR/zipalign" -v 4 "$UNSIGNED_APK" "$ALIGNED_APK"
 
+          # env: prefix — apksigner reads the password from the environment
+          # variable directly, never from the command string. This is the only
+          # safe method for passwords containing $, @, ! or other shell-special
+          # characters that would be silently corrupted by shell interpolation.
           "$BUILD_TOOLS_DIR/apksigner" sign \
             --ks android/app/release-keystore.jks \
-            --ks-pass "pass:${KEYSTORE_PASSWORD}" \
+            --ks-pass "env:KEYSTORE_PASSWORD" \
             --ks-key-alias "${KEY_ALIAS}" \
-            --key-pass "pass:${KEY_PASSWORD}" \
+            --key-pass "env:KEY_PASSWORD" \
             "$ALIGNED_APK"
 
-          echo "✅ APK signed successfully"
+          echo "✅ APK signed (${{ steps.ks_type.outputs.type }}) successfully"
 
       # ── Unsigned APK fallback ──
       - name: Copy unsigned APK (fallback)
@@ -182,20 +204,32 @@ jobs:
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          # For PKCS12 the key password must equal the store password.
+          # For JKS it can differ — KEY_PASSWORD secret is used as-is.
+          KEY_PASSWORD: ${{ steps.ks_type.outputs.type == 'PKCS12' && secrets.KEYSTORE_PASSWORD || secrets.KEY_PASSWORD }}
         run: |
           UNSIGNED_AAB=$(find android/app/build -name "*-release.aab" | head -1)
           SIGNED_AAB="android/app/build/outputs/bundle/release/scrollix-release.aab"
 
+          # :file suffix — jarsigner reads the password as raw bytes from a temp
+          # file written by printf (no trailing newline, no shell interpretation).
+          # This is the safe equivalent of apksigner's env: prefix for passwords
+          # containing $, @, ! or other shell-special characters.
+          PASS_FILE=$(mktemp)
+          KEY_PASS_FILE=$(mktemp)
+          printf '%s' "${KEYSTORE_PASSWORD}" > "$PASS_FILE"
+          printf '%s' "${KEY_PASSWORD}" > "$KEY_PASS_FILE"
+
           jarsigner -verbose \
             -keystore android/app/release-keystore.jks \
-            -storepass "${KEYSTORE_PASSWORD}" \
-            -keypass "${KEY_PASSWORD}" \
+            -storepass:file "$PASS_FILE" \
+            -keypass:file "$KEY_PASS_FILE" \
             -signedjar "$SIGNED_AAB" \
             "$UNSIGNED_AAB" \
             "${KEY_ALIAS}"
 
-          echo "✅ AAB signed successfully"
+          rm -f "$PASS_FILE" "$KEY_PASS_FILE"
+          echo "✅ AAB signed (${{ steps.ks_type.outputs.type }}) successfully"
 
       # ── Unsigned AAB fallback ──
       - name: Copy unsigned AAB (fallback)
