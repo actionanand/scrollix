@@ -3,16 +3,16 @@ import forge from 'node-forge';
 import fs from 'fs';
 
 // ── Config — edit these ───────────────────────────────────────────────────────
-const STORE_PASSWORD = 'YOUR_STORE_PASSWORD'; // used for both store & key (PKCS12 single-passphrase)
+const STORE_PASSWORD = 'YOUR_STORE_PASSWORD'; // single passphrase for PKCS12 (covers store + key)
 const KEY_PASSWORD = 'YOUR_KEY_PASSWORD'; // PKCS12 uses a single password; KEY_PASSWORD is ignored by most tools but kept for parity
 const ALIAS = 'scrollix';
 const OUTPUT_FILE = 'release-keystore.jks'; // .jks extension kept for workflow compatibility
 // const VALIDITY_YEARS  = 27;                      // ~10000 days
-const VALIDITY_YEARS = 100;
+const VALIDITY_YEARS = 100; // 100 years — cannot renew Android signing keys
 const DNAME = {
-  CN: 'Scrollix',
-  O: 'Scrollix',
-  C: 'IN',
+  CN: 'Scrollix', // Common Name  (app name)
+  O: 'Scrollix', // Organization (app/company name)
+  C: 'IN', // Country code (ISO 3166-1 alpha-2)
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -37,33 +37,22 @@ cert.sign(keys.privateKey, forge.md.sha256.create());
 
 console.log('📦 Assembling PKCS12 bundle...');
 
-// ── localKeyId: ties the private key bag to the certificate bag ──────────────
-// Java's PKCS12KeyStore REQUIRES matching localKeyId on both bags to correctly
-// resolve the alias → private key mapping. Without this, jarsigner sees the
-// alias but cannot retrieve the private key and throws "not a private key".
-const localKeyId = forge.util.hexToBytes('01'); // any consistent non-empty value
-
-// ── Safe bag 1: encrypted private key (shroudedKeyBag) ───────────────────────
-// aes256 = PBES2 + AES-256-CBC, which Java 11+ (including 21) reads correctly.
-// '3des' uses a node-forge-specific PBE scheme that diverges from Java's strict
-// PKCS#5 v2 parser and causes BadPaddingException on decryption.
-const keyBag = forge.pkcs12.generateKey(STORE_PASSWORD, '', 1, 2048, 1, forge.md.sha256.create());
-const shroudedKeyBag = forge.pki.wrapRsaPrivateKey(forge.pki.privateKeyToAsn1(keys.privateKey));
-const encryptedKeyBag = forge.pkcs12.createPfx(
-  forge.asn1.create(forge.asn1.Class.UNIVERSAL, forge.asn1.Type.SEQUENCE, true, []),
-  null,
-  null,
-).safeContents; // not used — we build manually below
-
-// Build bags manually for full control over localKeyId attributes
+// Pass cert directly (not in an array) so node-forge ≥1.3 correctly sets a
+// matching localKeyId on both the private-key bag and the certificate bag.
+// Java's PKCS12KeyStore uses localKeyId to resolve alias → private key;
+// without it jarsigner throws "key associated with <alias> not a private key".
+//
+// algorithm: 'aes256' → PBES2 + AES-256-CBC, which Java 11–21 parses correctly.
+// '3des' uses a node-forge PBE scheme that diverges from Java's strict PKCS#5 v2
+// implementation and causes BadPaddingException / "wrong password" at signing time.
 const p12 = forge.pkcs12.toPkcs12Asn1(
   keys.privateKey,
-  cert, // single cert, not array — triggers correct localKeyId linking in forge ≥1.3
+  cert, // ← single cert object, NOT an array
   STORE_PASSWORD,
   {
-    algorithm: 'aes256', // PBES2/AES-256 — Java 11+ compatible; avoids 3DES PBE mismatch
+    algorithm: 'aes256', // Java 11+ compatible; do NOT use '3des'
     friendlyName: ALIAS,
-    generateLocalKeyId: true, // explicitly request localKeyId generation on both bags
+    generateLocalKeyId: true, // links key bag ↔ cert bag by localKeyId
   },
 );
 
@@ -78,6 +67,7 @@ console.log(`    Format   : PKCS12 / AES-256`);
 console.log();
 console.log('Verify with:');
 console.log(`  keytool -list -v -keystore ${OUTPUT_FILE} -storepass 'YOUR_STORE_PASSWORD'`);
+console.log('  Look for → Keystore type: PKCS12 | Entry type: PrivateKeyEntry');
 console.log();
-console.log('Next step — encode for GitHub secret:');
+console.log('Next — encode for GitHub Secrets:');
 console.log(`  base64 -w 0 ${OUTPUT_FILE} > keystore.b64.txt`);
