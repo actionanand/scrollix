@@ -6,6 +6,7 @@ import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { VideoPlayerComponent } from '../video-player/video-player';
 import { decodeVideoId, encodeVideoId, extractShareSlug } from '../../utils/video-id';
+import { buildVideoShareUrl } from '../../utils/share-url';
 
 @Component({
   selector: 'app-video-detail',
@@ -49,7 +50,7 @@ export class VideoDetailComponent {
       mediaItem.type === 'facebook-share' && mediaItem.resolvedUrl
         ? mediaItem.resolvedUrl
         : mediaItem.url;
-    return `${location.origin}/video/${encodeVideoId(source)}`;
+    return buildVideoShareUrl(encodeVideoId(source));
   });
 
   constructor() {
@@ -71,5 +72,18 @@ export class VideoDetailComponent {
 
   protected goBack(): void {
     this.router.navigate(['/videos']);
+  }
+
+  protected formatStartTime(seconds: number | null): string {
+    if (seconds == null || seconds <= 0) return '';
+    const totalSeconds = Math.floor(seconds);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const remainingSeconds = totalSeconds % 60;
+    const parts: string[] = [];
+    if (hours > 0) parts.push(`${hours} Hr`);
+    if (minutes > 0) parts.push(`${minutes} Min`);
+    if (remainingSeconds > 0 || parts.length === 0) parts.push(`${remainingSeconds} Sec`);
+    return parts.join(' ');
   }
 }

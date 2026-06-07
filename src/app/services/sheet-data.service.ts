@@ -1,8 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 import { MediaItem, MediaType, GvizResponse } from '../models/media-item.model';
 import { ToastService } from './toast.service';
 import { environment } from '../../environments/environment';
+import { buildFacebookVideoUrl, extractFacebookVideoId } from '../utils/video-id';
 
 const CACHE_KEY = 'scrollix_sheet_data';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -10,6 +12,13 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 interface CacheEntry {
   timestamp: number;
   items: MediaItem[];
+}
+
+interface MicrolinkResolveResponse {
+  status: string;
+  data?: {
+    url?: string;
+  };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -47,7 +56,7 @@ export class SheetDataService {
       const cached = this.loadFromCache(true);
       if (cached && cached.length > 0) {
         this._items.set(cached);
-        this.toast.show('📡 Showing offline content');
+        this.toast.show('Showing offline content');
         return;
       }
       this._error.set('No internet connection and no cached content');
@@ -63,19 +72,30 @@ export class SheetDataService {
       next: (text) => {
         try {
           const items = this.parseGvizResponse(text);
-          this._items.set(items);
-          this.saveToCache(items);
-          if (forceRefresh) this.toast.show('✅ Content refreshed');
+          this.resolveFacebookShareItems(items).subscribe({
+            next: (resolvedItems) => {
+              this._items.set(resolvedItems);
+              this.saveToCache(resolvedItems);
+              if (forceRefresh) this.toast.show('Content refreshed');
+              this._loading.set(false);
+            },
+            error: () => {
+              this._items.set(items);
+              this.saveToCache(items);
+              if (forceRefresh) this.toast.show('Content refreshed');
+              this._loading.set(false);
+            },
+          });
         } catch {
           this._error.set('Failed to parse sheet data');
+          this._loading.set(false);
         }
-        this._loading.set(false);
       },
       error: () => {
         const cached = this.loadFromCache(true);
         if (cached && cached.length > 0) {
           this._items.set(cached);
-          this.toast.show('📡 Showing cached content');
+          this.toast.show('Showing cached content');
         } else {
           this._error.set('Failed to fetch data. Check your connection.');
         }
@@ -103,6 +123,31 @@ export class SheetDataService {
     } catch {
       // Storage unavailable
     }
+  }
+
+  private resolveFacebookShareItems(items: MediaItem[]): Observable<MediaItem[]> {
+    if (items.length === 0) return of([]);
+    return forkJoin(items.map((item) => this.resolveFacebookShareItem(item)));
+  }
+
+  private resolveFacebookShareItem(item: MediaItem): Observable<MediaItem> {
+    if (item.type !== 'facebook-share') return of(item);
+
+    const source = item.resolvedUrl || item.url;
+    const existingId = extractFacebookVideoId(source);
+    if (existingId) {
+      return of({ ...item, resolvedUrl: buildFacebookVideoUrl(existingId) });
+    }
+
+    const apiUrl = `https://api.microlink.io/?url=${encodeURIComponent(item.url)}`;
+    return this.http.get<MicrolinkResolveResponse>(apiUrl).pipe(
+      map((res) => {
+        const resolvedUrl = res.status === 'success' ? (res.data?.url ?? '') : '';
+        const resolvedId = extractFacebookVideoId(resolvedUrl);
+        return resolvedId ? { ...item, resolvedUrl: buildFacebookVideoUrl(resolvedId) } : item;
+      }),
+      catchError(() => of(item)),
+    );
   }
 
   private parseGvizResponse(text: string): MediaItem[] {

@@ -32,8 +32,22 @@ describe('video-id helpers', () => {
     expect(extractFacebookVideoId('https://www.facebook.com/share/v/1Dp1wqwvkX/')).toBe(
       '2365458590609161',
     );
-    expect(buildFacebookVideoUrl('https://www.facebook.com/share/r/1B5RTTQrfZ/')).toBe(
-      'https://www.facebook.com/reel/1491297816129848',
+    expect(buildFacebookVideoUrl('https://www.facebook.com/share/v/191FWA9VXu/')).toBe(
+      'https://www.facebook.com/reel/1821110698482978',
     );
+    expect(buildFacebookVideoUrl('https://www.facebook.com/share/r/18PMxQP4dw/')).toBe(
+      'https://www.facebook.com/reel/1268443481767807',
+    );
+    expect(buildFacebookVideoUrl('https://www.facebook.com/share/r/18jaUaRFea/')).toBe(
+      'https://www.facebook.com/reel/1641838417045674',
+    );
+  });
+
+  it('uses the final numeric segment from facebook canonical video urls', () => {
+    expect(
+      extractFacebookVideoId(
+        'https://www.facebook.com/61585386935792/videos/sometimes-going-back-to-our-roots/1641838417045674/',
+      ),
+    ).toBe('1641838417045674');
   });
 });
