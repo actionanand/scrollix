@@ -16,6 +16,7 @@ const FACEBOOK_SHARE_ID_OVERRIDES: Record<string, string> = {
   '1B5RTTQrfZ': '1491297816129848',
   '191FWA9VXu': '1821110698482978',
   '18PMxQP4dw': '1268443481767807',
+  '18jaUaRFea': '1641838417045674',
 };
 
 export function encodeVideoId(urlOrSlug: string): string {
@@ -50,7 +51,7 @@ export function extractFacebookVideoId(urlOrId: string): string | null {
     const shareCode = extractFacebookShareCode(url.pathname);
     if (shareCode) return FACEBOOK_SHARE_ID_OVERRIDES[shareCode] ?? null;
 
-    const numericSegment = url.pathname.split('/').find((segment) => /^\d+$/.test(segment));
+    const numericSegment = findLastNumericSegment(url.pathname);
     return numericSegment ?? null;
   } catch {
     return null;
@@ -115,6 +116,15 @@ function ensureScheme(value: string): string {
 
 function extractFacebookShareCode(pathname: string): string | null {
   return pathname.match(/\/share\/[rv]\/([^/?#]+)/i)?.[1] ?? null;
+}
+
+function findLastNumericSegment(pathname: string): string | null {
+  const segments = pathname.split('/').filter(Boolean);
+  for (let i = segments.length - 1; i >= 0; i--) {
+    const segment = segments[i];
+    if (/^\d+$/.test(segment)) return segment;
+  }
+  return null;
 }
 
 function extractSlug(urlOrSlug: string): string {
