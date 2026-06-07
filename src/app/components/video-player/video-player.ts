@@ -16,6 +16,7 @@ import { buildFacebookVideoUrl, encodeVideoId, extractFacebookVideoId } from '..
 import { MediaItem } from '../../models/media-item.model';
 import { ToastService } from '../../services/toast.service';
 import { YoutubeService, YtPlayer } from '../../services/youtube.service';
+import { buildVideoShareUrl } from '../../utils/share-url';
 
 interface DocumentPipApi {
   requestWindow(options: { width: number; height: number }): Promise<{ document: Document }>;
@@ -41,8 +42,11 @@ export class VideoPlayerComponent {
   protected readonly muted = signal(false);
   protected readonly iframeLoading = signal(true);
   protected readonly dailymotionActivated = signal(false);
-  protected readonly pipSupported = 'documentPictureInPicture' in window;
+  protected readonly appFullscreen = signal(false);
+  protected readonly pipSupported =
+    'documentPictureInPicture' in window || /Android/i.test(navigator.userAgent);
   private readonly resolvedFacebookVideoUrl = signal<string | null>(null);
+  private ignoreNextPopState = false;
 
   private readonly iframeRef = viewChild<ElementRef<HTMLIFrameElement>>('playerIframe');
   private ytPlayer: YtPlayer | undefined;
@@ -69,7 +73,11 @@ export class VideoPlayerComponent {
     );
   });
 
-  protected readonly canUsePip = computed(() => this.pipSupported && !this.isYoutube());
+  protected readonly canUsePip = computed(() => this.pipSupported);
+
+  protected readonly formattedStartTime = computed(() =>
+    this.formatStartTime(this.item().startTime),
+  );
 
   private readonly facebookVideoUrl = computed(() => {
     const item = this.item();
@@ -119,8 +127,21 @@ export class VideoPlayerComponent {
     this.destroyRef.onDestroy(() => {
       this.ytPlayer?.destroy();
       this.ytPlayer = undefined;
+      window.removeEventListener('popstate', this.handlePopState);
     });
+
+    window.addEventListener('popstate', this.handlePopState);
   }
+
+  private readonly handlePopState = (): void => {
+    if (this.ignoreNextPopState) {
+      this.ignoreNextPopState = false;
+      return;
+    }
+    if (this.appFullscreen()) {
+      this.appFullscreen.set(false);
+    }
+  };
 
   protected onIframeLoad(): void {
     this.iframeLoading.set(false);
@@ -148,7 +169,7 @@ export class VideoPlayerComponent {
 
   protected async copyLink(): Promise<void> {
     const id = encodeVideoId(this.shareSource(this.item()));
-    const url = `${location.origin}/video/${id}`;
+    const url = buildVideoShareUrl(id);
     try {
       await navigator.clipboard.writeText(url);
       this.toast.show('📋 Link copied!');
@@ -158,14 +179,25 @@ export class VideoPlayerComponent {
   }
 
   protected requestFullscreen(): void {
-    const iframe = this.isYoutube() ? this.ytPlayer?.getIframe() : this.iframeRef()?.nativeElement;
-    iframe?.requestFullscreen?.();
+    this.enterAppFullscreen();
+  }
+
+  protected exitFullscreen(): void {
+    if (!this.appFullscreen()) return;
+    this.appFullscreen.set(false);
+    if (history.state?.scrollixFullscreen === true) {
+      this.ignoreNextPopState = true;
+      history.back();
+    }
   }
 
   protected async requestPip(): Promise<void> {
     const pipApi = (window as unknown as { documentPictureInPicture?: DocumentPipApi })
       .documentPictureInPicture;
-    if (!pipApi) return;
+    if (!pipApi) {
+      this.toast.show('PIP is not supported on this device');
+      return;
+    }
     const srcIframe = this.isYoutube()
       ? this.ytPlayer?.getIframe()
       : this.iframeRef()?.nativeElement;
@@ -187,8 +219,14 @@ export class VideoPlayerComponent {
         'width:100%;height:100%;margin:0;padding:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center';
       pipWindow.document.body.appendChild(pipIframe);
     } catch {
-      // PIP denied or not supported
+      this.toast.show('PIP is not supported for this video');
     }
+  }
+
+  private enterAppFullscreen(): void {
+    if (this.appFullscreen()) return;
+    this.appFullscreen.set(true);
+    history.pushState({ scrollixFullscreen: true }, '', location.href);
   }
 
   private async resolveFacebookShareRedirect(): Promise<void> {
@@ -282,5 +320,18 @@ export class VideoPlayerComponent {
 
   private shareSource(item: MediaItem): string {
     return item.type === 'facebook-share' && item.resolvedUrl ? item.resolvedUrl : item.url;
+  }
+
+  private formatStartTime(seconds: number | null): string {
+    if (seconds == null || seconds <= 0) return '';
+    const totalSeconds = Math.floor(seconds);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const remainingSeconds = totalSeconds % 60;
+    const parts: string[] = [];
+    if (hours > 0) parts.push(`${hours} Hr`);
+    if (minutes > 0) parts.push(`${minutes} Min`);
+    if (remainingSeconds > 0 || parts.length === 0) parts.push(`${remainingSeconds} Sec`);
+    return parts.join(' ');
   }
 }

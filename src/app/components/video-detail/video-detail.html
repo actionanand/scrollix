@@ -23,7 +23,7 @@
           <p class="detail-desc">{{ video.desc }}</p>
         }
         @if (video.startTime) {
-          <p class="detail-meta">Start time: {{ video.startTime }}s</p>
+          <p class="detail-meta">Start time: {{ formatStartTime(video.startTime) }}</p>
         }
       </div>
     </div>

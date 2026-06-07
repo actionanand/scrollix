@@ -35,5 +35,8 @@ describe('video-id helpers', () => {
     expect(buildFacebookVideoUrl('https://www.facebook.com/share/r/1B5RTTQrfZ/')).toBe(
       'https://www.facebook.com/reel/1491297816129848',
     );
+    expect(buildFacebookVideoUrl('https://www.facebook.com/share/v/191FWA9VXu/')).toBe(
+      'https://www.facebook.com/reel/1821110698482978',
+    );
   });
 });
