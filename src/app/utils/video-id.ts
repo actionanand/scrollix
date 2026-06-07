@@ -15,6 +15,7 @@ const FACEBOOK_SHARE_ID_OVERRIDES: Record<string, string> = {
   '1Dp1wqwvkX': '2365458590609161',
   '1B5RTTQrfZ': '1491297816129848',
   '191FWA9VXu': '1821110698482978',
+  '18PMxQP4dw': '1268443481767807',
 };
 
 export function encodeVideoId(urlOrSlug: string): string {
