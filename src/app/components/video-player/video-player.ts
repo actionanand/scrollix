@@ -22,6 +22,21 @@ interface DocumentPipApi {
   requestWindow(options: { width: number; height: number }): Promise<{ document: Document }>;
 }
 
+interface AndroidPipPlugin {
+  isSupported(): Promise<{ supported: boolean }>;
+  enter(options: { width: number; height: number }): Promise<void>;
+}
+
+declare global {
+  interface Window {
+    Capacitor?: {
+      Plugins?: {
+        ScrollixPip?: AndroidPipPlugin;
+      };
+    };
+  }
+}
+
 @Component({
   selector: 'app-video-player',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,7 +59,7 @@ export class VideoPlayerComponent {
   protected readonly dailymotionActivated = signal(false);
   protected readonly appFullscreen = signal(false);
   protected readonly pipSupported =
-    'documentPictureInPicture' in window || /Android/i.test(navigator.userAgent);
+    'documentPictureInPicture' in window || this.androidPipPlugin() != null;
   private readonly resolvedFacebookVideoUrl = signal<string | null>(null);
   private ignoreNextPopState = false;
 
@@ -194,33 +209,64 @@ export class VideoPlayerComponent {
   protected async requestPip(): Promise<void> {
     const pipApi = (window as unknown as { documentPictureInPicture?: DocumentPipApi })
       .documentPictureInPicture;
+    const vertical = this.isVertical();
+    const size = {
+      width: vertical ? 360 : 400,
+      height: vertical ? 640 : 225,
+    };
+
     if (!pipApi) {
-      this.toast.show('PIP is not supported on this device');
+      await this.requestAndroidPip(size.width, size.height);
       return;
     }
+
     const srcIframe = this.isYoutube()
       ? this.ytPlayer?.getIframe()
       : this.iframeRef()?.nativeElement;
-    if (!srcIframe) return;
+    const src = this.isYoutube() ? this.buildYoutubePipUrl(this.item()) : srcIframe?.src;
+    if (!src) return;
+
     try {
-      const vertical = this.isVertical();
-      const pipWindow = await pipApi.requestWindow({
-        width: vertical ? 360 : 400,
-        height: vertical ? 640 : 225,
-      });
+      const pipWindow = await pipApi.requestWindow(size);
       const pipIframe = pipWindow.document.createElement('iframe');
-      pipIframe.src = srcIframe.src;
+      pipIframe.src = src;
       pipIframe.style.cssText = 'display:block;width:100%;height:100%;border:0;margin:0';
-      pipIframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+      pipIframe.allow =
+        'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
       pipIframe.allowFullscreen = true;
+      pipIframe.referrerPolicy = 'strict-origin-when-cross-origin';
       pipWindow.document.documentElement.style.cssText =
         'width:100%;height:100%;margin:0;background:#000';
       pipWindow.document.body.style.cssText =
         'width:100%;height:100%;margin:0;padding:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center';
       pipWindow.document.body.appendChild(pipIframe);
     } catch {
+      await this.requestAndroidPip(size.width, size.height);
+    }
+  }
+
+  private async requestAndroidPip(width: number, height: number): Promise<void> {
+    const plugin = this.androidPipPlugin();
+    if (!plugin) {
+      this.toast.show('PIP is not supported on this device');
+      return;
+    }
+
+    try {
+      const result = await plugin.isSupported();
+      if (!result.supported) {
+        this.toast.show('PIP is not supported on this device');
+        return;
+      }
+      this.enterAppFullscreen();
+      await plugin.enter({ width, height });
+    } catch {
       this.toast.show('PIP is not supported for this video');
     }
+  }
+
+  private androidPipPlugin(): AndroidPipPlugin | undefined {
+    return window.Capacitor?.Plugins?.ScrollixPip;
   }
 
   private enterAppFullscreen(): void {
@@ -316,6 +362,19 @@ export class VideoPlayerComponent {
       default:
         return item.url;
     }
+  }
+
+  private buildYoutubePipUrl(item: MediaItem): string {
+    const params = new URLSearchParams({
+      autoplay: '1',
+      enablejsapi: '1',
+      origin: window.location.origin,
+      playsinline: '1',
+      rel: '0',
+      widget_referrer: location.href,
+    });
+    if (item.startTime) params.set('start', String(item.startTime));
+    return `https://www.youtube.com/embed/${item.url}?${params.toString()}`;
   }
 
   private shareSource(item: MediaItem): string {
