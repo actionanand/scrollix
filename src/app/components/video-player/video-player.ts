@@ -58,8 +58,7 @@ export class VideoPlayerComponent {
   protected readonly iframeLoading = signal(true);
   protected readonly dailymotionActivated = signal(false);
   protected readonly appFullscreen = signal(false);
-  protected readonly pipSupported =
-    'documentPictureInPicture' in window || this.androidPipPlugin() != null;
+  protected readonly miniPipUrl = signal<string | null>(null);
   private readonly resolvedFacebookVideoUrl = signal<string | null>(null);
   private ignoreNextPopState = false;
 
@@ -88,11 +87,14 @@ export class VideoPlayerComponent {
     );
   });
 
-  protected readonly canUsePip = computed(() => this.pipSupported);
-
   protected readonly formattedStartTime = computed(() =>
     this.formatStartTime(this.item().startTime),
   );
+
+  protected readonly miniPipSafeUrl = computed(() => {
+    const url = this.miniPipUrl();
+    return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
+  });
 
   private readonly facebookVideoUrl = computed(() => {
     const item = this.item();
@@ -187,7 +189,7 @@ export class VideoPlayerComponent {
     const url = buildVideoShareUrl(id);
     try {
       await navigator.clipboard.writeText(url);
-      this.toast.show('📋 Link copied!');
+      this.toast.show('Link copied');
     } catch {
       this.toast.show('Failed to copy link');
     }
@@ -215,53 +217,65 @@ export class VideoPlayerComponent {
       height: vertical ? 640 : 225,
     };
 
-    if (!pipApi) {
-      await this.requestAndroidPip(size.width, size.height);
-      return;
-    }
-
     const srcIframe = this.isYoutube()
       ? this.ytPlayer?.getIframe()
       : this.iframeRef()?.nativeElement;
-    const src = this.isYoutube() ? this.buildYoutubePipUrl(this.item()) : srcIframe?.src;
+    const src = this.isYoutube()
+      ? this.buildYoutubePipUrl(this.item(), this.youtubePipStart())
+      : srcIframe?.src;
     if (!src) return;
 
-    try {
-      const pipWindow = await pipApi.requestWindow(size);
-      const pipIframe = pipWindow.document.createElement('iframe');
-      pipIframe.src = src;
-      pipIframe.style.cssText = 'display:block;width:100%;height:100%;border:0;margin:0';
-      pipIframe.allow =
-        'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-      pipIframe.allowFullscreen = true;
-      pipIframe.referrerPolicy = 'strict-origin-when-cross-origin';
-      pipWindow.document.documentElement.style.cssText =
-        'width:100%;height:100%;margin:0;background:#000';
-      pipWindow.document.body.style.cssText =
-        'width:100%;height:100%;margin:0;padding:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center';
-      pipWindow.document.body.appendChild(pipIframe);
-    } catch {
-      await this.requestAndroidPip(size.width, size.height);
+    if (pipApi) {
+      try {
+        const pipWindow = await pipApi.requestWindow(size);
+        const pipIframe = pipWindow.document.createElement('iframe');
+        pipIframe.src = src;
+        pipIframe.style.cssText = 'display:block;width:100%;height:100%;border:0;margin:0';
+        pipIframe.allow =
+          'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        pipIframe.allowFullscreen = true;
+        pipIframe.referrerPolicy = 'strict-origin-when-cross-origin';
+        pipWindow.document.documentElement.style.cssText =
+          'width:100%;height:100%;margin:0;background:#000';
+        pipWindow.document.body.style.cssText =
+          'width:100%;height:100%;margin:0;padding:0;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center';
+        pipWindow.document.body.appendChild(pipIframe);
+        this.miniPipUrl.set(null);
+        return;
+      } catch {
+        // Fall through to Android native PIP or the web mini-player.
+      }
     }
+
+    const androidStarted = await this.requestAndroidPip(size.width, size.height);
+    if (!androidStarted) this.openMiniPip(src);
   }
 
-  private async requestAndroidPip(width: number, height: number): Promise<void> {
+  protected closeMiniPip(): void {
+    this.miniPipUrl.set(null);
+  }
+
+  private openMiniPip(src: string): void {
+    this.miniPipUrl.set(src);
+    this.toast.show('Mini player opened');
+  }
+
+  private async requestAndroidPip(width: number, height: number): Promise<boolean> {
     const plugin = this.androidPipPlugin();
     if (!plugin) {
-      this.toast.show('PIP is not supported on this device');
-      return;
+      return false;
     }
 
     try {
       const result = await plugin.isSupported();
       if (!result.supported) {
-        this.toast.show('PIP is not supported on this device');
-        return;
+        return false;
       }
       this.enterAppFullscreen();
       await plugin.enter({ width, height });
+      return true;
     } catch {
-      this.toast.show('PIP is not supported for this video');
+      return false;
     }
   }
 
@@ -364,7 +378,7 @@ export class VideoPlayerComponent {
     }
   }
 
-  private buildYoutubePipUrl(item: MediaItem): string {
+  private buildYoutubePipUrl(item: MediaItem, startOverride: number | null = null): string {
     const params = new URLSearchParams({
       autoplay: '1',
       enablejsapi: '1',
@@ -373,8 +387,15 @@ export class VideoPlayerComponent {
       rel: '0',
       widget_referrer: location.href,
     });
-    if (item.startTime) params.set('start', String(item.startTime));
+    const start = startOverride ?? item.startTime;
+    if (start) params.set('start', String(start));
     return `https://www.youtube.com/embed/${item.url}?${params.toString()}`;
+  }
+
+  private youtubePipStart(): number | null {
+    const currentTime = this.ytPlayer?.getCurrentTime?.();
+    if (currentTime == null || !Number.isFinite(currentTime) || currentTime <= 0) return null;
+    return Math.floor(currentTime);
   }
 
   private shareSource(item: MediaItem): string {

@@ -2,7 +2,7 @@
   <h1 class="app-title">Scrollix</h1>
   <div class="auth-section">
     @if (auth.isLoggedIn()) {
-      <span class="auth-badge" aria-label="Logged in">🔓</span>
+      <span class="auth-badge" aria-label="Logged in">In</span>
       <button class="btn btn-logout" (click)="onLogout()">Logout</button>
     } @else {
       <button class="btn btn-login" (click)="openLogin()">Login</button>

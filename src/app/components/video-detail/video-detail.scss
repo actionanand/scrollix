@@ -11,49 +11,69 @@
 }
 
 .back-btn {
+  min-height: 40px;
   padding: 0.5rem 0.85rem;
-  background: #f0f0f0;
-  border: none;
-  border-radius: 8px;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  color: var(--app-text);
   font-size: 0.9rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.15s;
+  box-shadow: 0 2px 8px rgba(22, 34, 51, 0.08);
+  transition:
+    background-color 0.15s,
+    transform 0.15s;
 
   &:hover {
-    background: #e0e0e0;
+    background: #eef3ff;
   }
 
   &:focus-visible {
-    outline: 2px solid #4361ee;
+    outline: 2px solid var(--app-primary);
     outline-offset: 2px;
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 }
 
 .copy-btn {
+  min-height: 40px;
   padding: 0.5rem 0.85rem;
-  background: #4361ee;
+  background: var(--app-primary);
   color: #fff;
-  border: none;
-  border-radius: 8px;
+  border: 1px solid var(--app-primary);
+  border-radius: 999px;
   font-size: 0.85rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.15s;
+  box-shadow: 0 8px 18px rgba(40, 71, 199, 0.16);
+  transition:
+    background-color 0.15s,
+    transform 0.15s;
 
   &:hover {
-    background: #3a56d4;
+    background: var(--app-primary-strong);
   }
 
   &:focus-visible {
-    outline: 2px solid #4361ee;
+    outline: 2px solid var(--app-primary);
     outline-offset: 2px;
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 }
 
 .detail-content {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--app-surface);
+  border: 1px solid rgba(220, 227, 239, 0.72);
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--app-shadow);
 }
 
 .detail-info {
@@ -69,13 +89,13 @@
 .type-badge {
   display: inline-block;
   padding: 0.2rem 0.65rem;
-  background: #e8ecf4;
-  color: #4361ee;
-  border-radius: 12px;
+  background: #e9f4f2;
+  color: #087465;
+  border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0;
   margin-bottom: 0.75rem;
 }
 

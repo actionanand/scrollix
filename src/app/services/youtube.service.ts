@@ -5,6 +5,7 @@ export interface YtPlayer {
   unMute(): void;
   destroy(): void;
   getIframe(): HTMLIFrameElement;
+  getCurrentTime?(): number;
 }
 
 export interface YtPlayerConfig {

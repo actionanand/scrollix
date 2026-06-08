@@ -64,7 +64,7 @@ export class VideoDetailComponent {
   protected async copyLink(): Promise<void> {
     try {
       await navigator.clipboard.writeText(this.shareUrl());
-      this.toast.show('📋 Link copied!');
+      this.toast.show('Link copied');
     } catch {
       this.toast.show('Failed to copy link');
     }

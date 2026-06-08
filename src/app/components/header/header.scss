@@ -2,23 +2,42 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background: #4361ee;
+  padding: calc(0.85rem + env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) 0.85rem
+    max(1rem, env(safe-area-inset-left));
+  background:
+    linear-gradient(135deg, rgba(15, 143, 125, 0.26), transparent 34%),
+    linear-gradient(135deg, #2847c7 0%, #1f3aa8 100%);
   color: #fff;
   flex-wrap: wrap;
   gap: 0.5rem;
+  box-shadow: 0 12px 28px rgba(31, 58, 168, 0.24);
 }
 
 .app-title {
   font-size: 1.25rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 .auth-section {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.auth-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(15, 143, 125, 0.38);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
 }
 
 .welcome {
@@ -30,12 +49,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 36px;
   padding: 0.4rem 0.85rem;
-  border: none;
-  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 3px 10px rgba(10, 18, 32, 0.14);
   transition:
     background-color 0.2s,
     transform 0.1s;
@@ -51,7 +72,7 @@
 }
 
 .btn-login {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.18);
   color: #fff;
 
   &:hover {
@@ -60,10 +81,29 @@
 }
 
 .btn-logout {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
 
   &:hover {
     background: rgba(255, 255, 255, 0.25);
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    align-items: flex-start;
+    padding-bottom: 1rem;
+  }
+
+  .app-title {
+    font-size: 1.15rem;
+    line-height: 1.2;
+  }
+
+  .welcome {
+    max-width: 44vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }

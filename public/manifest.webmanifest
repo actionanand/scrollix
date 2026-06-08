@@ -1,0 +1,19 @@
+{
+  "name": "Scrollix",
+  "short_name": "Scrollix",
+  "description": "A compact feed for watching shared videos.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f7fb",
+  "theme_color": "#2847c7",
+  "icons": [
+    {
+      "src": "scrollix.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
