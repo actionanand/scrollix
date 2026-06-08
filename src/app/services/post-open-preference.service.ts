@@ -1,7 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 import { MediaItem } from '../models/media-item.model';
+import { environment } from '../../environments/environment';
 
 const STORAGE_KEY = 'scrollix.postOpenInApp';
+const APP_ALIASES: Record<string, string[]> = {
+  facebook: ['facebook', 'fb'],
+  instagram: ['instagram', 'ig'],
+};
 
 @Injectable({ providedIn: 'root' })
 export class PostOpenPreferenceService {
@@ -9,7 +14,7 @@ export class PostOpenPreferenceService {
   readonly openInApp = signal(this.readOpenInAppPreference());
 
   openPost(item: MediaItem): void {
-    if (this.isAndroidApp() && this.openInApp()) {
+    if (this.isAndroidApp() && this.openInApp() && !this.shouldOpenExternally(item.url)) {
       void this.openNativeReader(item);
       return;
     }
@@ -81,6 +86,34 @@ export class PostOpenPreferenceService {
       return new URL(url).hostname.replace(/^www\./, '');
     } catch {
       return 'Post';
+    }
+  }
+
+  private shouldOpenExternally(url: string): boolean {
+    const configuredApps = environment.ANDROID_POST_EXTERNAL_APPS ?? [];
+    if (configuredApps.length === 0) return false;
+
+    const normalizedUrl = url.toLowerCase();
+    const host = this.hostFromUrl(url);
+    return configuredApps.some((app) => {
+      const normalizedApp = app.toLowerCase().trim();
+      if (!normalizedApp) return false;
+      const names = APP_ALIASES[normalizedApp] ?? [normalizedApp];
+      return names.some(
+        (name) =>
+          host === name ||
+          host.endsWith(`.${name}`) ||
+          host.includes(`${name}.`) ||
+          normalizedUrl.startsWith(`${name}:`),
+      );
+    });
+  }
+
+  private hostFromUrl(url: string): string {
+    try {
+      return new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+    } catch {
+      return url.toLowerCase();
     }
   }
 }
