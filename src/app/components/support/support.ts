@@ -1,5 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-support',
@@ -7,10 +6,4 @@ import { Router } from '@angular/router';
   templateUrl: './support.html',
   styleUrl: './support.scss',
 })
-export class SupportComponent {
-  private readonly router = inject(Router);
-
-  protected goBack(): void {
-    this.router.navigate(['/videos']);
-  }
-}
+export class SupportComponent {}

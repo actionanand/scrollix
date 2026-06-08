@@ -1,8 +1,12 @@
 <div class="support-page">
-  <div class="support-header">
-    <button class="back-btn" (click)="goBack()" aria-label="Back to home">← Back</button>
+  <header class="support-hero">
+    <p class="eyebrow">Scrollix setup</p>
     <h1>Data Entry Guide</h1>
-  </div>
+    <p>
+      Use one row per item in the Google Sheet. Videos appear in the Videos tab, and rows with type
+      <code>post</code> appear in the Posts tab.
+    </p>
+  </header>
 
   <section class="section">
     <h2>Google Sheet Columns</h2>
@@ -21,49 +25,52 @@
             <td>A</td>
             <td>S No</td>
             <td>Yes</td>
-            <td>Serial number (auto-increment)</td>
+            <td>Serial number.</td>
           </tr>
           <tr>
             <td>B</td>
             <td>Type</td>
             <td>Yes</td>
-            <td>Content type (see types below)</td>
+            <td>
+              Content type such as <code>youtube</code>, <code>instagram</code>, or
+              <code>post</code>.
+            </td>
           </tr>
           <tr>
             <td>C</td>
             <td>URL</td>
             <td>Yes</td>
-            <td>Video ID or full URL depending on type</td>
+            <td>Video ID, share link, or full post/blog URL depending on the type.</td>
           </tr>
           <tr>
             <td>D</td>
             <td>Protected</td>
             <td>Yes</td>
-            <td>"Yes" to require login, "No" for public</td>
+            <td>Use <code>Yes</code> to require login, or <code>No</code> for public content.</td>
           </tr>
           <tr>
             <td>E</td>
             <td>Title</td>
             <td>No</td>
-            <td>Display title for the content</td>
+            <td>Display title.</td>
           </tr>
           <tr>
             <td>F</td>
             <td>Desc</td>
             <td>No</td>
-            <td>Description text</td>
+            <td>Description text.</td>
           </tr>
           <tr>
             <td>G</td>
             <td>Start Time</td>
             <td>No</td>
-            <td>Start time in seconds (YouTube only)</td>
+            <td>YouTube start time in seconds.</td>
           </tr>
           <tr>
             <td>H</td>
             <td>Resolved URL/ID</td>
             <td>No</td>
-            <td>Optional numeric Facebook reel ID or resolved URL for facebook-share</td>
+            <td>Optional resolved Facebook URL or numeric reel/video ID.</td>
           </tr>
         </tbody>
       </table>
@@ -72,229 +79,109 @@
 
   <section class="section">
     <h2>Supported Types</h2>
-
     <div class="type-grid">
-      <div class="type-card">
+      <article class="type-card">
         <h3>youtube</h3>
-        <p class="type-desc">Standard YouTube video</p>
-        <div class="example">
-          <div class="row">
-            <span class="label">URL column:</span>
-            <code>K6o9JTcPgOA</code>
-          </div>
-          <div class="row">
-            <span class="label">Actual URL:</span>
-            <code>youtube.com/watch?v=K6o9JTcPgOA</code>
-          </div>
-          <p class="note">✅ Start Time supported (column G, in seconds)</p>
-        </div>
-      </div>
+        <p>Use the YouTube video ID, for example <code>K6o9JTcPgOA</code>.</p>
+        <p>Column G can contain a start time such as <code>85</code>.</p>
+      </article>
 
-      <div class="type-card">
+      <article class="type-card">
         <h3>youtube-short</h3>
-        <p class="type-desc">YouTube Shorts video</p>
-        <div class="example">
-          <div class="row">
-            <span class="label">URL column:</span>
-            <code>WcLbw92V4qk</code>
-          </div>
-          <div class="row">
-            <span class="label">Actual URL:</span>
-            <code>youtube.com/shorts/WcLbw92V4qk</code>
-          </div>
-        </div>
-      </div>
+        <p>Use the Shorts ID from <code>youtube.com/shorts/ID</code>.</p>
+      </article>
 
-      <div class="type-card">
+      <article class="type-card">
         <h3>instagram</h3>
-        <p class="type-desc">Instagram post or reel</p>
-        <div class="example">
-          <div class="row">
-            <span class="label">URL column:</span>
-            <code>DXHprmqgQQK</code>
-          </div>
-          <div class="row">
-            <span class="label">Actual URL:</span>
-            <code>instagram.com/p/DXHprmqgQQK/</code>
-          </div>
-        </div>
-      </div>
+        <p>Use the Instagram post or reel code, for example <code>DXHprmqgQQK</code>.</p>
+      </article>
 
-      <div class="type-card">
+      <article class="type-card">
         <h3>facebook</h3>
-        <p class="type-desc">Facebook video or reel (using reel ID)</p>
-        <div class="example">
-          <div class="row">
-            <span class="label">URL column:</span>
-            <code>1646510169815130</code>
-          </div>
-          <div class="row">
-            <span class="label">Actual URL:</span>
-            <code>facebook.com/reel/1646510169815130</code>
-          </div>
-        </div>
-      </div>
+        <p>Use the numeric Facebook reel/video ID, for example <code>1646510169815130</code>.</p>
+      </article>
 
-      <div class="type-card">
+      <article class="type-card">
         <h3>facebook-reel</h3>
-        <p class="type-desc">Facebook reel (same handling as facebook)</p>
-        <div class="example">
-          <div class="row">
-            <span class="label">URL column:</span>
-            <code>1646510169815130</code>
-          </div>
-          <div class="row">
-            <span class="label">Actual URL:</span>
-            <code>facebook.com/reel/1646510169815130</code>
-          </div>
-        </div>
-      </div>
+        <p>Same handling as <code>facebook</code>; use the numeric reel ID.</p>
+      </article>
 
-      <div class="type-card">
+      <article class="type-card">
         <h3>facebook-share</h3>
-        <p class="type-desc">Facebook share link (auto-resolved to video/reel)</p>
-        <div class="example">
-          <div class="row">
-            <span class="label">URL column:</span>
-            <code class="wrap">https://www.facebook.com/share/v/1Dp1wqwvkX/</code>
-          </div>
-          <div class="row">
-            <span class="label">Or:</span>
-            <code class="wrap">https://www.facebook.com/share/r/189yEPygCP/</code>
-          </div>
-          <p class="note">ℹ️ Paste the full share URL. It will be resolved automatically.</p>
-          <p class="note">
-            Optional: add the resolved numeric reel ID in column H for new share links.
-          </p>
-        </div>
-      </div>
+        <p>
+          Paste the full share URL, for example <code>https://www.facebook.com/share/v/...</code>.
+        </p>
+        <p>Column H can hold the resolved numeric ID when needed.</p>
+      </article>
 
-      <div class="type-card">
+      <article class="type-card">
         <h3>dailymotion</h3>
-        <p class="type-desc">Dailymotion video</p>
-        <div class="example">
-          <div class="row">
-            <span class="label">URL column:</span>
-            <code>x5jnrro</code>
-          </div>
-          <div class="row">
-            <span class="label">Actual URL:</span>
-            <code>dailymotion.com/video/x5jnrro</code>
-          </div>
-        </div>
-      </div>
+        <p>Use the Dailymotion video ID, for example <code>x5jnrro</code>.</p>
+      </article>
 
-      <div class="type-card">
+      <article class="type-card">
         <h3>vimeo</h3>
-        <p class="type-desc">Vimeo video</p>
-        <div class="example">
-          <div class="row">
-            <span class="label">URL column:</span>
-            <code>360071854</code>
-          </div>
-          <div class="row">
-            <span class="label">Actual URL:</span>
-            <code>vimeo.com/360071854</code>
-          </div>
-        </div>
-      </div>
+        <p>Use the Vimeo numeric ID, for example <code>360071854</code>.</p>
+      </article>
 
-      <div class="type-card">
+      <article class="type-card">
         <h3>other-video</h3>
-        <p class="type-desc">Any other video platform</p>
-        <div class="example">
-          <div class="row">
-            <span class="label">URL column:</span>
-            <code class="wrap">Full embed URL (e.g., https://peertube.tv/w/...)</code>
-          </div>
-          <p class="note">
-            ⚠️ Use the full video URL. Embedding depends on the platform's support.
-          </p>
-        </div>
-      </div>
+        <p>Use a full embeddable video URL. Playback depends on the platform.</p>
+      </article>
 
-      <div class="type-card">
+      <article class="type-card type-card--wide">
         <h3>post</h3>
-        <p class="type-desc">Blog post or Facebook post (shown in Posts tab)</p>
-        <div class="example">
-          <div class="row">
-            <span class="label">URL column:</span>
-            <code class="wrap">Full URL of the blog/post</code>
-          </div>
-          <div class="row">
-            <span class="label">Facebook:</span>
-            <code class="wrap">https://www.facebook.com/share/p/1FkYn1GL29/</code>
-          </div>
-          <div class="row">
-            <span class="label">Blog:</span>
-            <code class="wrap">https://example.com/blog/article</code>
-          </div>
-          <p class="note">ℹ️ Facebook posts are embedded. Other posts show a link preview card.</p>
-        </div>
-      </div>
+        <p>Use the full blog or social post URL.</p>
+        <p>
+          Facebook post share links such as
+          <code>https://www.facebook.com/share/p/1FkYn1GL29/</code> are valid.
+        </p>
+        <p>
+          In the Android app, normal blogs open in the Scrollix in-app browser. URLs matching
+          <code>ANDROID_POST_EXTERNAL_APPS</code> in the environment, currently
+          <code>facebook</code> and <code>instagram</code>, open directly through Android so the
+          native app can handle them.
+        </p>
+      </article>
     </div>
   </section>
 
   <section class="section">
+    <h2>Post Opening</h2>
+    <ul class="tips-list">
+      <li>Web opens posts in the browser as usual.</li>
+      <li>
+        Android shows a Posts toggle: <code>In-app browser</code> or <code>Default browser</code>.
+      </li>
+      <li>
+        Facebook and Instagram post URLs skip the in-app browser based on the environment list.
+      </li>
+      <li>
+        Add more app names to <code>ANDROID_POST_EXTERNAL_APPS</code> when a site should open
+        natively.
+      </li>
+    </ul>
+  </section>
+
+  <section class="section">
     <h2>Shareable Video Links</h2>
-    <p class="section-desc">
-      Each video has a permanent shareable URL derived from its <strong>URL column</strong> (not the
-      S.No). The logic:
-    </p>
     <ol class="logic-list">
-      <li>
-        If the URL is a <strong>short ID</strong> (e.g. <code>K6o9JTcPgOA</code>), it is used
-        directly as the slug.
-      </li>
-      <li>
-        If the URL is a <strong>resolved Facebook video/reel link</strong> (e.g.
-        <code>https://www.facebook.com/reel/2365458590609161/</code>), the numeric video ID
-        (<code>2365458590609161</code>) becomes the slug.
-      </li>
-      <li>
-        Known <strong>Facebook share links</strong> (e.g.
-        <code>https://www.facebook.com/share/v/1Dp1wqwvkX/</code>) resolve to their numeric reel ID
-        before encoding.
-      </li>
-      <li>
-        The slug is <strong>base-36 encoded</strong>: each character is converted to its char-code
-        (zero-padded to 3 digits), concatenated into a number, then expressed in base-36 for a
-        compact URL.
-      </li>
+      <li>Short IDs, such as <code>K6o9JTcPgOA</code>, are used directly as the slug source.</li>
+      <li>Resolved Facebook reel links use the numeric ID after <code>/reel/</code>.</li>
+      <li>Known Facebook share links resolve before encoding.</li>
+      <li>The final slug is base-36 encoded for a compact permanent URL.</li>
     </ol>
-    <div class="example">
-      <div class="row">
-        <span class="label">YouTube ID:</span>
-        <code>K6o9JTcPgOA</code>
-      </div>
-      <div class="row">
-        <span class="label">Encoded:</span>
-        <code>/video/1y2x3...</code>
-      </div>
-      <p class="note">
-        ℹ️ This ID stays the same even if S.No changes, as long as the URL column remains unchanged.
-      </p>
-    </div>
   </section>
 
   <section class="section">
     <h2>Tips</h2>
     <ul class="tips-list">
+      <li>Set <strong>Protected</strong> to <code>Yes</code> to require login.</li>
+      <li><strong>Title</strong> and <strong>Desc</strong> are optional for all types.</li>
+      <li><strong>Start Time</strong> only applies to YouTube videos.</li>
+      <li>For <code>post</code>, paste the full URL of the blog or social post.</li>
       <li>
-        Set <strong>Protected</strong> to <code>Yes</code> to require login to view the content
-      </li>
-      <li><strong>Title</strong> and <strong>Desc</strong> are optional for all types</li>
-      <li><strong>Start Time</strong> only works with YouTube videos (in seconds)</li>
-      <li>For <code>other-video</code>, use the full embeddable URL</li>
-      <li>For <code>post</code>, use the full URL of the blog or post</li>
-      <li>
-        For <code>facebook-share</code>, paste the share link as-is — it resolves automatically
-      </li>
-      <li>
-        For new <code>facebook-share</code> links, column H can hold the resolved numeric reel ID
-      </li>
-      <li>
-        Videos appear in the <strong>Videos</strong> tab, posts in the <strong>Posts</strong> tab
+        For <code>facebook-share</code>, paste the share link as-is; column H is optional fallback.
       </li>
     </ul>
   </section>

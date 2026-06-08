@@ -114,6 +114,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.ViewGroup;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -124,6 +125,7 @@ import android.widget.TextView;
 public class ScrollixPostActivity extends Activity {
   private WebView webView;
   private String url;
+  private final int primaryColor = Color.rgb(40, 71, 199);
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -136,6 +138,11 @@ public class ScrollixPostActivity extends Activity {
       return;
     }
 
+    getWindow().setStatusBarColor(primaryColor);
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      getWindow().setDecorFitsSystemWindows(true);
+    }
+
     LinearLayout root = new LinearLayout(this);
     root.setOrientation(LinearLayout.VERTICAL);
     root.setBackgroundColor(Color.WHITE);
@@ -144,8 +151,8 @@ public class ScrollixPostActivity extends Activity {
     LinearLayout bar = new LinearLayout(this);
     bar.setOrientation(LinearLayout.HORIZONTAL);
     bar.setGravity(Gravity.CENTER_VERTICAL);
-    bar.setPadding(dp(12), dp(10), dp(12), dp(10));
-    bar.setBackgroundColor(Color.rgb(40, 71, 199));
+    bar.setPadding(dp(12), dp(10) + statusBarHeight(), dp(12), dp(10));
+    bar.setBackgroundColor(primaryColor);
     root.addView(bar, new LinearLayout.LayoutParams(
       ViewGroup.LayoutParams.MATCH_PARENT,
       ViewGroup.LayoutParams.WRAP_CONTENT
@@ -190,7 +197,17 @@ public class ScrollixPostActivity extends Activity {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
       settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
     }
-    webView.setWebViewClient(new WebViewClient());
+    webView.setWebViewClient(new WebViewClient() {
+      @Override
+      public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        return handleUrl(request.getUrl().toString());
+      }
+
+      @Override
+      public boolean shouldOverrideUrlLoading(WebView view, String nextUrl) {
+        return handleUrl(nextUrl);
+      }
+    });
     root.addView(webView, new LinearLayout.LayoutParams(
       ViewGroup.LayoutParams.MATCH_PARENT,
       0,
@@ -237,6 +254,21 @@ public class ScrollixPostActivity extends Activity {
     }
   }
 
+  private boolean handleUrl(String nextUrl) {
+    Uri uri = Uri.parse(nextUrl);
+    String scheme = uri.getScheme();
+    if (scheme == null || scheme.equals("http") || scheme.equals("https")) {
+      return false;
+    }
+
+    try {
+      startActivity(new Intent(Intent.ACTION_VIEW, uri));
+    } catch (Exception ignored) {
+      // Ignore unsupported custom schemes inside the in-app reader.
+    }
+    return true;
+  }
+
   private String domainFromUrl(String rawUrl) {
     try {
       String host = Uri.parse(rawUrl).getHost();
@@ -249,6 +281,12 @@ public class ScrollixPostActivity extends Activity {
 
   private int dp(int value) {
     return Math.round(value * getResources().getDisplayMetrics().density);
+  }
+
+  private int statusBarHeight() {
+    int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+    if (resourceId <= 0) return 0;
+    return getResources().getDimensionPixelSize(resourceId);
   }
 }
 `,

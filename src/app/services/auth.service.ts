@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { environment } from '../../environments/environment';
 
 const AUTH_KEY = 'scrollix_auth';
@@ -11,6 +11,7 @@ export class AuthService {
 
   readonly isLoggedIn = this._isLoggedIn.asReadonly();
   readonly username = this._username.asReadonly();
+  readonly displayName = computed(() => this.formatDisplayName(this._username()));
 
   async login(username: string, password: string): Promise<boolean> {
     const hash = await this.sha1(password);
@@ -42,5 +43,16 @@ export class AuthService {
     const hashBuffer = await crypto.subtle.digest('SHA-1', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  private formatDisplayName(username: string): string {
+    const rawName = username.split('@')[0]?.trim() || username.trim();
+    if (!rawName) return 'User';
+    return rawName
+      .replace(/[._-]+/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
   }
 }
