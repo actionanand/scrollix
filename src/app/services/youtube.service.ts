@@ -14,11 +14,13 @@ export interface YtPlayerConfig {
   height?: number | string;
   playerVars?: {
     autoplay?: 0 | 1;
+    enablejsapi?: 0 | 1;
     mute?: 0 | 1;
     start?: number;
     origin?: string;
     rel?: 0 | 1;
     playsinline?: 0 | 1;
+    widget_referrer?: string;
   };
   events?: {
     onReady?: (e: { target: YtPlayer }) => void;

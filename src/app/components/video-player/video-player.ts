@@ -4,12 +4,12 @@ import {
   computed,
   signal,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   inject,
   viewChild,
   ElementRef,
   afterNextRender,
   DestroyRef,
-  NgZone,
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { buildFacebookVideoUrl, encodeVideoId, extractFacebookVideoId } from '../../utils/video-id';
@@ -51,7 +51,7 @@ export class VideoPlayerComponent {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly toast = inject(ToastService);
   private readonly ytService = inject(YoutubeService);
-  private readonly ngZone = inject(NgZone);
+  private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly muted = signal(false);
@@ -117,26 +117,35 @@ export class VideoPlayerComponent {
       void this.resolveFacebookShareRedirect();
       if (!this.isYoutube()) return;
       this.ytService.load().then(() => {
-        this.ngZone.runOutsideAngular(() => {
-          const item = this.item();
-          this.ytPlayer = new window.YT!.Player(this.ytPlayerId(), {
-            videoId: item.url,
-            width: '100%',
-            height: '100%',
-            playerVars: {
-              origin: window.location.origin,
-              autoplay: 0,
-              mute: this.muted() ? 1 : 0,
-              rel: 0,
-              playsinline: 1,
-              ...(item.startTime ? { start: item.startTime } : {}),
+        const item = this.item();
+        this.ytPlayer = new window.YT!.Player(this.ytPlayerId(), {
+          videoId: item.url,
+          width: '100%',
+          height: '100%',
+          playerVars: {
+            origin: location.origin,
+            widget_referrer: location.href,
+            enablejsapi: 1,
+            autoplay: 0,
+            mute: this.muted() ? 1 : 0,
+            rel: 0,
+            playsinline: 1,
+            ...(item.startTime ? { start: item.startTime } : {}),
+          },
+          events: {
+            onReady: (event) => {
+              const iframe = event.target.getIframe();
+              iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+              iframe.allow =
+                'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+              this.iframeLoading.set(false);
+              this.cdr.markForCheck();
             },
-            events: {
-              onReady: () => {
-                this.ngZone.run(() => this.iframeLoading.set(false));
-              },
+            onError: () => {
+              this.iframeLoading.set(false);
+              this.cdr.markForCheck();
             },
-          });
+          },
         });
       });
     });
@@ -225,16 +234,26 @@ export class VideoPlayerComponent {
       : srcIframe?.src;
     if (!src) return;
 
+    if (this.isYoutube()) {
+      const androidStarted = await this.requestAndroidPip(size.width, size.height);
+      if (!androidStarted) this.openMiniPip(src);
+      return;
+    }
+
     if (pipApi) {
       try {
         const pipWindow = await pipApi.requestWindow(size);
+        const referrerMeta = pipWindow.document.createElement('meta');
+        referrerMeta.name = 'referrer';
+        referrerMeta.content = 'strict-origin-when-cross-origin';
+        pipWindow.document.head.appendChild(referrerMeta);
         const pipIframe = pipWindow.document.createElement('iframe');
-        pipIframe.src = src;
         pipIframe.style.cssText = 'display:block;width:100%;height:100%;border:0;margin:0';
         pipIframe.allow =
           'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
         pipIframe.allowFullscreen = true;
         pipIframe.referrerPolicy = 'strict-origin-when-cross-origin';
+        pipIframe.src = src;
         pipWindow.document.documentElement.style.cssText =
           'width:100%;height:100%;margin:0;background:#000';
         pipWindow.document.body.style.cssText =
@@ -314,7 +333,7 @@ export class VideoPlayerComponent {
     switch (item.type) {
       case 'youtube':
       case 'youtube-short':
-        // Handled by YT.Player API — this fallback is never shown in the template
+        // Handled by YT.Player API; this fallback is never shown in the template.
         return '';
 
       case 'instagram':
