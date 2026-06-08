@@ -7,17 +7,10 @@ const STORAGE_KEY = 'scrollix.postOpenInApp';
 export class PostOpenPreferenceService {
   readonly isAndroidApp = signal(this.detectAndroidApp());
   readonly openInApp = signal(this.readOpenInAppPreference());
-  readonly activePost = signal<MediaItem | null>(null);
-
-  private ignoreNextPopState = false;
-
-  constructor() {
-    window.addEventListener('popstate', this.handlePopState);
-  }
 
   openPost(item: MediaItem): void {
     if (this.isAndroidApp() && this.openInApp()) {
-      this.openReader(item);
+      void this.openNativeReader(item);
       return;
     }
 
@@ -25,7 +18,13 @@ export class PostOpenPreferenceService {
   }
 
   openExternal(url: string): void {
-    window.open(url, '_blank', 'noopener,noreferrer');
+    const plugin = window.Capacitor?.Plugins?.ScrollixBrowser;
+    if (this.isAndroidApp() && plugin) {
+      void plugin.openExternal({ url }).catch(() => this.openWindow(url));
+      return;
+    }
+
+    this.openWindow(url);
   }
 
   setOpenInApp(value: boolean): void {
@@ -37,30 +36,26 @@ export class PostOpenPreferenceService {
     }
   }
 
-  closeReader(): void {
-    if (!this.activePost()) return;
-    this.activePost.set(null);
-    if (history.state?.scrollixPostReader === true) {
-      this.ignoreNextPopState = true;
-      history.back();
-    }
-  }
-
-  private openReader(item: MediaItem): void {
-    this.activePost.set(item);
-    if (history.state?.scrollixPostReader === true) return;
-    history.pushState({ scrollixPostReader: true }, '', location.href);
-  }
-
-  private readonly handlePopState = (): void => {
-    if (this.ignoreNextPopState) {
-      this.ignoreNextPopState = false;
+  private async openNativeReader(item: MediaItem): Promise<void> {
+    const plugin = window.Capacitor?.Plugins?.ScrollixBrowser;
+    if (!plugin) {
+      this.openExternal(item.url);
       return;
     }
-    if (this.activePost()) {
-      this.activePost.set(null);
+
+    try {
+      await plugin.open({
+        url: item.url,
+        title: item.title || this.domainFromUrl(item.url),
+      });
+    } catch {
+      this.openExternal(item.url);
     }
-  };
+  }
+
+  private openWindow(url: string): void {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
 
   private readOpenInAppPreference(): boolean {
     if (!this.detectAndroidApp()) return false;
@@ -79,5 +74,13 @@ export class PostOpenPreferenceService {
     const isNative = capacitor?.isNativePlatform?.() === true;
     const platform = capacitor?.getPlatform?.();
     return isNative && platform === 'android';
+  }
+
+  private domainFromUrl(url: string): string {
+    try {
+      return new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      return 'Post';
+    }
   }
 }

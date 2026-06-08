@@ -1,5 +1,4 @@
 import { Component, inject, computed, signal, ChangeDetectionStrategy } from '@angular/core';
-import { DomSanitizer } from '@angular/platform-browser';
 import { SheetDataService } from '../../services/sheet-data.service';
 import { AuthService } from '../../services/auth.service';
 import { PostOpenPreferenceService } from '../../services/post-open-preference.service';
@@ -17,7 +16,6 @@ const PAGE_SIZE = 6;
 export class PostListComponent {
   private readonly sheetData = inject(SheetDataService);
   private readonly auth = inject(AuthService);
-  private readonly sanitizer = inject(DomSanitizer);
   protected readonly postOpenPreference = inject(PostOpenPreferenceService);
 
   protected readonly loading = this.sheetData.loading;
@@ -26,11 +24,6 @@ export class PostListComponent {
 
   protected readonly searchQuery = signal('');
   protected readonly currentPage = signal(1);
-
-  protected readonly activeReaderUrl = computed(() => {
-    const post = this.postOpenPreference.activePost();
-    return post ? this.sanitizer.bypassSecurityTrustResourceUrl(post.url) : null;
-  });
 
   private readonly allPosts = computed(() => {
     const isLoggedIn = this.auth.isLoggedIn();
@@ -101,23 +94,5 @@ export class PostListComponent {
   protected onPostOpenModeChange(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.postOpenPreference.setOpenInApp(checked);
-  }
-
-  protected closePostReader(): void {
-    this.postOpenPreference.closeReader();
-  }
-
-  protected openReaderPostInBrowser(): void {
-    const post = this.postOpenPreference.activePost();
-    if (!post) return;
-    this.postOpenPreference.openExternal(post.url);
-  }
-
-  protected readerDomain(url: string): string {
-    try {
-      return new URL(url).hostname.replace(/^www\./, '');
-    } catch {
-      return url;
-    }
   }
 }

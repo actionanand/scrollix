@@ -276,80 +276,6 @@
   grid-column: 1 / -1;
 }
 
-.post-reader {
-  position: fixed;
-  inset: 0;
-  z-index: 1500;
-  display: flex;
-  flex-direction: column;
-  background: #f4f7fb;
-}
-
-.post-reader__bar {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.65rem;
-  padding: calc(0.65rem + env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) 0.65rem
-    max(0.75rem, env(safe-area-inset-left));
-  background:
-    linear-gradient(135deg, rgba(15, 143, 125, 0.22), transparent 38%),
-    linear-gradient(135deg, #2847c7 0%, #1f3aa8 100%);
-  color: #fff;
-  box-shadow: 0 8px 20px rgba(22, 34, 51, 0.18);
-}
-
-.post-reader__info {
-  min-width: 0;
-}
-
-.post-reader__title,
-.post-reader__domain {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.post-reader__title {
-  font-size: 0.92rem;
-  font-weight: 800;
-}
-
-.post-reader__domain {
-  color: rgba(255, 255, 255, 0.74);
-  font-size: 0.7rem;
-}
-
-.post-reader__btn {
-  min-height: 36px;
-  padding: 0.4rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  font-size: 0.78rem;
-  font-weight: 800;
-  cursor: pointer;
-
-  &:focus-visible {
-    outline: 2px solid #fff;
-    outline-offset: 2px;
-  }
-}
-
-.post-reader__btn--primary {
-  background: #fff;
-  color: #1f3aa8;
-}
-
-.post-reader__frame {
-  flex: 1;
-  width: 100%;
-  border: 0;
-  background: #fff;
-}
-
 @media (max-width: 640px) {
   .android-open-mode {
     align-items: flex-start;
@@ -358,13 +284,5 @@
 
   .mode-switch__label {
     display: none;
-  }
-
-  .post-reader__bar {
-    gap: 0.5rem;
-  }
-
-  .post-reader__btn {
-    padding-inline: 0.65rem;
   }
 }
