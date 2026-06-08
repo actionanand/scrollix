@@ -32,6 +32,25 @@
       <span class="mode-switch__label">Open in app</span>
     </label>
   </section>
+  <section class="android-open-mode" aria-label="Offline post filter">
+    <div>
+      <span class="android-open-mode__title">Offline posts</span>
+      <span class="android-open-mode__desc">
+        {{ offlinePosts.savedPosts().length }} saved, max {{ offlinePosts.offlineLimit() }}
+      </span>
+    </div>
+    <label class="mode-switch">
+      <input
+        type="checkbox"
+        [checked]="offlinePosts.showOfflineOnly()"
+        (change)="onOfflineOnlyChange($event)"
+      />
+      <span class="mode-switch__track" aria-hidden="true">
+        <span class="mode-switch__thumb"></span>
+      </span>
+      <span class="mode-switch__label">Show offline posts</span>
+    </label>
+  </section>
 }
 
 @if (loading()) {

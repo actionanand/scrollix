@@ -58,11 +58,20 @@ writeFileSync(
   `package ${appPackage};
 
 import android.content.Intent;
+import android.net.Uri;
 
+import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 @CapacitorPlugin(name = "ScrollixBrowser")
 public class ScrollixBrowserPlugin extends Plugin {
@@ -82,6 +91,26 @@ public class ScrollixBrowserPlugin extends Plugin {
   }
 
   @PluginMethod
+  public void openOffline(PluginCall call) {
+    String url = call.getString("url");
+    String html = call.getString("html");
+    if (url == null || url.trim().isEmpty() || html == null || html.trim().isEmpty()) {
+      call.reject("A URL and HTML are required.");
+      return;
+    }
+
+    ScrollixPostActivity.pendingHtml = html;
+    ScrollixPostActivity.pendingBaseUrl = call.getString("baseUrl", url);
+
+    Intent intent = new Intent(getActivity(), ScrollixPostActivity.class);
+    intent.putExtra("url", url);
+    intent.putExtra("title", call.getString("title", "Post"));
+    intent.putExtra("offline", true);
+    getActivity().startActivity(intent);
+    call.resolve();
+  }
+
+  @PluginMethod
   public void openExternal(PluginCall call) {
     String url = call.getString("url");
     if (url == null || url.trim().isEmpty()) {
@@ -90,11 +119,51 @@ public class ScrollixBrowserPlugin extends Plugin {
     }
 
     try {
-      Intent intent = new Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url));
+      Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
       getActivity().startActivity(intent);
       call.resolve();
     } catch (Exception ex) {
       call.reject("No browser can handle this URL.");
+    }
+  }
+
+  @PluginMethod
+  public void fetchHtml(PluginCall call) {
+    String url = call.getString("url");
+    if (url == null || url.trim().isEmpty()) {
+      call.reject("A URL is required.");
+      return;
+    }
+
+    new Thread(() -> {
+      try {
+        String html = downloadHtml(url);
+        JSObject result = new JSObject();
+        result.put("html", html);
+        getActivity().runOnUiThread(() -> call.resolve(result));
+      } catch (Exception ex) {
+        getActivity().runOnUiThread(() -> call.reject("Unable to fetch offline content."));
+      }
+    }).start();
+  }
+
+  private String downloadHtml(String rawUrl) throws Exception {
+    HttpURLConnection connection = (HttpURLConnection) new URL(rawUrl).openConnection();
+    connection.setInstanceFollowRedirects(true);
+    connection.setConnectTimeout(15000);
+    connection.setReadTimeout(20000);
+    connection.setRequestProperty("User-Agent", "Mozilla/5.0 Scrollix Android");
+
+    try (InputStream input = connection.getInputStream();
+         BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
+      StringBuilder html = new StringBuilder();
+      String line;
+      while ((line = reader.readLine()) != null) {
+        html.append(line).append('\\n');
+      }
+      return html.toString();
+    } finally {
+      connection.disconnect();
     }
   }
 }
@@ -123,8 +192,13 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 public class ScrollixPostActivity extends Activity {
+  public static String pendingHtml;
+  public static String pendingBaseUrl;
+
   private WebView webView;
   private String url;
+  private String offlineHtml;
+  private String offlineBaseUrl;
   private final int primaryColor = Color.rgb(40, 71, 199);
 
   @Override
@@ -137,6 +211,10 @@ public class ScrollixPostActivity extends Activity {
       finish();
       return;
     }
+    offlineHtml = getIntent().getBooleanExtra("offline", false) ? pendingHtml : null;
+    offlineBaseUrl = pendingBaseUrl != null ? pendingBaseUrl : url;
+    pendingHtml = null;
+    pendingBaseUrl = null;
 
     getWindow().setStatusBarColor(primaryColor);
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -213,7 +291,11 @@ public class ScrollixPostActivity extends Activity {
       0,
       1
     ));
-    webView.loadUrl(url);
+    if (offlineHtml != null && !offlineHtml.trim().isEmpty()) {
+      webView.loadDataWithBaseURL(offlineBaseUrl, offlineHtml, "text/html", "UTF-8", url);
+    } else {
+      webView.loadUrl(url);
+    }
   }
 
   @Override

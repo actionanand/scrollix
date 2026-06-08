@@ -13,6 +13,7 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { MediaItem, LinkPreview } from '../../models/media-item.model';
 import { LinkPreviewService } from '../../services/link-preview.service';
 import { PostOpenPreferenceService } from '../../services/post-open-preference.service';
+import { OfflinePostService } from '../../services/offline-post.service';
 
 @Component({
   selector: 'app-post-card',
@@ -26,6 +27,7 @@ export class PostCardComponent {
   private readonly sanitizer = inject(DomSanitizer);
   private readonly linkPreview = inject(LinkPreviewService);
   private readonly postOpenPreference = inject(PostOpenPreferenceService);
+  protected readonly offlinePosts = inject(OfflinePostService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly preview = signal<LinkPreview | null>(null);
@@ -73,6 +75,16 @@ export class PostCardComponent {
   }
 
   protected openPost(): void {
+    if (this.offlinePosts.showOfflineOnly() && this.offlinePosts.openSaved(this.item())) return;
     this.postOpenPreference.openPost(this.item());
+  }
+
+  protected toggleOffline(): void {
+    const item = this.item();
+    if (this.offlinePosts.isSaved(item.url)) {
+      this.offlinePosts.remove(item.url);
+      return;
+    }
+    void this.offlinePosts.save(item);
   }
 }

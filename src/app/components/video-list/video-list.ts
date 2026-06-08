@@ -5,8 +5,7 @@ import { AuthService } from '../../services/auth.service';
 import { VideoPlayerComponent } from '../video-player/video-player';
 import { MediaItem, MediaType } from '../../models/media-item.model';
 import { encodeVideoId } from '../../utils/video-id';
-
-const PAGE_SIZE = 6;
+import { environment } from '../../../environments/environment';
 
 const TYPE_LABELS: Record<string, string> = {
   all: 'All Types',
@@ -36,6 +35,7 @@ const TYPE_LABELS: Record<string, string> = {
 export class VideoListComponent {
   private readonly sheetData = inject(SheetDataService);
   private readonly auth = inject(AuthService);
+  private readonly pageSize = environment.SCROLLIX_CONFIG.videosPerPage;
 
   protected readonly loading = this.sheetData.loading;
   protected readonly error = this.sheetData.error;
@@ -78,7 +78,7 @@ export class VideoListComponent {
   });
 
   protected readonly totalPages = computed(() =>
-    Math.max(1, Math.ceil(this.searchedVideos().length / PAGE_SIZE)),
+    Math.max(1, Math.ceil(this.searchedVideos().length / this.pageSize)),
   );
 
   protected readonly pageNumbers = computed(() => {
@@ -100,8 +100,8 @@ export class VideoListComponent {
   });
 
   protected readonly paginatedVideos = computed(() => {
-    const start = (this.currentPage() - 1) * PAGE_SIZE;
-    return this.searchedVideos().slice(start, start + PAGE_SIZE);
+    const start = (this.currentPage() - 1) * this.pageSize;
+    return this.searchedVideos().slice(start, start + this.pageSize);
   });
 
   protected readonly isTallGrid = computed(() => {
