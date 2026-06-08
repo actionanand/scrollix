@@ -12,6 +12,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DomSanitizer } from '@angular/platform-browser';
 import { MediaItem, LinkPreview } from '../../models/media-item.model';
 import { LinkPreviewService } from '../../services/link-preview.service';
+import { PostOpenPreferenceService } from '../../services/post-open-preference.service';
 
 @Component({
   selector: 'app-post-card',
@@ -24,12 +25,13 @@ export class PostCardComponent {
 
   private readonly sanitizer = inject(DomSanitizer);
   private readonly linkPreview = inject(LinkPreviewService);
+  private readonly postOpenPreference = inject(PostOpenPreferenceService);
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly preview = signal<LinkPreview | null>(null);
   protected readonly previewLoading = signal(false);
 
-  // True only for direct Facebook post URLs (groups/permalink/etc.) — NOT share/p/ short links
+  // True only for direct Facebook post URLs, not share/p/ short links.
   protected readonly isFacebookPost = computed(() => {
     const url = this.item().url;
     return url.includes('facebook.com') && !url.includes('/share/');
@@ -71,6 +73,6 @@ export class PostCardComponent {
   }
 
   protected openPost(): void {
-    window.open(this.item().url, '_blank', 'noopener,noreferrer');
+    this.postOpenPreference.openPost(this.item());
   }
 }

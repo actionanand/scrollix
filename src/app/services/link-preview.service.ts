@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, catchError, map, switchMap } from 'rxjs';
 import { LinkPreview } from '../models/media-item.model';
+import { PostOpenPreferenceService } from './post-open-preference.service';
 
 interface MicrolinkResponse {
   status: string;
@@ -17,14 +18,22 @@ interface MicrolinkResponse {
 @Injectable({ providedIn: 'root' })
 export class LinkPreviewService {
   private readonly http = inject(HttpClient);
+  private readonly postOpenPreference = inject(PostOpenPreferenceService);
   private readonly cache = new Map<string, LinkPreview>();
 
   getPreview(url: string): Observable<LinkPreview> {
     const cached = this.cache.get(url);
     if (cached) return of(cached);
 
-    return this.fetchOgDirect(url).pipe(
-      switchMap((result) => (result ? of(result) : this.fetchMicrolink(url))),
+    const firstFetch = this.postOpenPreference.isAndroidApp()
+      ? this.fetchMicrolink(url)
+      : this.fetchOgDirect(url);
+    const fallbackFetch = this.postOpenPreference.isAndroidApp()
+      ? of(null)
+      : this.fetchMicrolink(url);
+
+    return firstFetch.pipe(
+      switchMap((result) => (result ? of(result) : fallbackFetch)),
       map((result) => {
         const preview = result ?? this.createFallback(url);
         this.cache.set(url, preview);

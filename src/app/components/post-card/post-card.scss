@@ -1,13 +1,17 @@
 .post-card {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--app-surface);
+  border: 1px solid rgba(220, 227, 239, 0.72);
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(22, 34, 51, 0.08);
   padding: 1rem;
-  transition: box-shadow 0.2s;
+  transition:
+    box-shadow 0.2s,
+    transform 0.15s;
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--app-shadow);
+    transform: translateY(-1px);
   }
 }
 
@@ -32,32 +36,32 @@
 
 .post-link-card {
   padding: 1rem;
-  background: #f8f9fa;
+  background: #f8fafc;
   border-radius: 8px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--app-border);
   margin-bottom: 0.75rem;
   cursor: pointer;
   transition: background-color 0.15s;
 
   &:hover {
-    background: #e9ecef;
+    background: #eef3ff;
   }
 
   &:focus-visible {
-    outline: 2px solid #4361ee;
+    outline: 2px solid var(--app-primary);
     outline-offset: 2px;
   }
 }
 
 .post-url {
   font-size: 0.85rem;
-  color: #4361ee;
+  color: var(--app-primary);
   word-break: break-all;
 }
 
 .post-desc {
   font-size: 0.85rem;
-  color: #555;
+  color: var(--app-text-muted);
   margin-bottom: 0.5rem;
   line-height: 1.4;
 }
@@ -68,17 +72,17 @@
   justify-content: center;
   gap: 0.75rem;
   padding: 2rem 1rem;
-  background: #f8f9fa;
+  background: #f8fafc;
   border-radius: 8px;
   margin-bottom: 0.75rem;
-  color: #888;
+  color: var(--app-text-muted);
   font-size: 0.85rem;
 
   .spinner {
     width: 20px;
     height: 20px;
-    border: 2px solid #e0e0e0;
-    border-top-color: #4361ee;
+    border: 2px solid var(--app-border);
+    border-top-color: var(--app-primary);
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
   }
@@ -92,7 +96,7 @@
 
 .preview-card {
   border-radius: 8px;
-  border: 1px solid #e9ecef;
+  border: 1px solid var(--app-border);
   overflow: hidden;
   cursor: pointer;
   margin-bottom: 0.75rem;
@@ -103,7 +107,7 @@
   }
 
   &:focus-visible {
-    outline: 2px solid #4361ee;
+    outline: 2px solid var(--app-primary);
     outline-offset: 2px;
   }
 }
@@ -140,7 +144,7 @@
 
 .preview-desc-text {
   font-size: 0.8rem;
-  color: #666;
+  color: var(--app-text-muted);
   line-height: 1.35;
   margin-bottom: 0.35rem;
   display: -webkit-box;
@@ -151,28 +155,39 @@
 
 .preview-domain {
   font-size: 0.75rem;
-  color: #999;
+  color: var(--app-text-muted);
   text-transform: lowercase;
 }
 
 .open-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.25rem;
-  padding: 0.35rem 0.65rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 6px;
-  background: #fafafa;
+  min-height: 34px;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #d6dbe7;
+  border-radius: 999px;
+  background: #fff;
+  color: #26324a;
   font-size: 0.8rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s,
+    transform 0.15s;
 
   &:hover {
-    background: #f0f0f0;
+    background: #eef3ff;
+    border-color: #9db4ff;
+    color: var(--app-primary);
+    transform: translateY(-1px);
   }
 
   &:focus-visible {
-    outline: 2px solid #4361ee;
-    outline-offset: 1px;
+    outline: 2px solid var(--app-primary);
+    outline-offset: 2px;
   }
 }

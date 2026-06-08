@@ -9,6 +9,7 @@
         scrolling="no"
         allowTransparency="true"
         allow="encrypted-media"
+        referrerpolicy="strict-origin-when-cross-origin"
         [title]="item().title || 'Post ' + item().sNo"
       ></iframe>
     </div>
@@ -58,7 +59,5 @@
   @if (item().desc) {
     <p class="post-desc">{{ item().desc }}</p>
   }
-  <button class="ctrl-btn open-btn" (click)="openPost()" aria-label="Open post in new tab">
-    ↗ Open Post
-  </button>
+  <button class="ctrl-btn open-btn" (click)="openPost()" aria-label="Open post">Open Post</button>
 </div>

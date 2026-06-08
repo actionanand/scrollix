@@ -2,10 +2,12 @@
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 .search-input {
   flex: 1;
+  min-width: 160px;
   padding: 0.55rem 0.85rem;
   border: 1.5px solid #ddd;
   border-radius: 8px;
@@ -19,12 +21,15 @@
 }
 
 .refresh-btn {
-  width: 38px;
+  min-width: 84px;
   height: 38px;
+  padding: 0 0.85rem;
   border: 1.5px solid #ddd;
-  border-radius: 8px;
+  border-radius: 999px;
   background: #fff;
-  font-size: 1.1rem;
+  color: var(--app-text);
+  font-size: 0.84rem;
+  font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -44,6 +49,90 @@
     outline: 2px solid #4361ee;
     outline-offset: 1px;
   }
+}
+
+.android-open-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(220, 227, 239, 0.86);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 18px rgba(22, 34, 51, 0.08);
+}
+
+.android-open-mode__title,
+.android-open-mode__desc {
+  display: block;
+}
+
+.android-open-mode__title {
+  color: var(--app-text);
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.android-open-mode__desc {
+  color: var(--app-text-muted);
+  font-size: 0.76rem;
+}
+
+.mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 36px;
+  color: var(--app-text);
+  font-size: 0.8rem;
+  font-weight: 750;
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  input:focus-visible + .mode-switch__track {
+    outline: 2px solid var(--app-primary);
+    outline-offset: 3px;
+  }
+
+  input:checked + .mode-switch__track {
+    background: var(--app-primary);
+  }
+
+  input:checked + .mode-switch__track .mode-switch__thumb {
+    transform: translateX(20px);
+  }
+}
+
+.mode-switch__track {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  background: #b7c1d1;
+  transition: background-color 0.2s;
+}
+
+.mode-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(22, 34, 51, 0.24);
+  transition: transform 0.2s;
 }
 
 .post-grid {
@@ -185,4 +274,97 @@
   padding: 3rem 1rem;
   color: #999;
   grid-column: 1 / -1;
+}
+
+.post-reader {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  background: #f4f7fb;
+}
+
+.post-reader__bar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.65rem;
+  padding: calc(0.65rem + env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) 0.65rem
+    max(0.75rem, env(safe-area-inset-left));
+  background:
+    linear-gradient(135deg, rgba(15, 143, 125, 0.22), transparent 38%),
+    linear-gradient(135deg, #2847c7 0%, #1f3aa8 100%);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(22, 34, 51, 0.18);
+}
+
+.post-reader__info {
+  min-width: 0;
+}
+
+.post-reader__title,
+.post-reader__domain {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-reader__title {
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.post-reader__domain {
+  color: rgba(255, 255, 255, 0.74);
+  font-size: 0.7rem;
+}
+
+.post-reader__btn {
+  min-height: 36px;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+}
+
+.post-reader__btn--primary {
+  background: #fff;
+  color: #1f3aa8;
+}
+
+.post-reader__frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #fff;
+}
+
+@media (max-width: 640px) {
+  .android-open-mode {
+    align-items: flex-start;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .mode-switch__label {
+    display: none;
+  }
+
+  .post-reader__bar {
+    gap: 0.5rem;
+  }
+
+  .post-reader__btn {
+    padding-inline: 0.65rem;
+  }
 }
