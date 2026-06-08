@@ -59,5 +59,25 @@
   @if (item().desc) {
     <p class="post-desc">{{ item().desc }}</p>
   }
-  <button class="ctrl-btn open-btn" (click)="openPost()" aria-label="Open post">Open Post</button>
+  <div class="post-actions">
+    <button class="ctrl-btn open-btn" (click)="openPost()" aria-label="Open post">Open Post</button>
+    @if (offlinePosts.canUseOffline()) {
+      <button
+        class="ctrl-btn offline-btn"
+        (click)="toggleOffline()"
+        [disabled]="offlinePosts.savingUrl() === item().url"
+        [attr.aria-label]="
+          offlinePosts.isSaved(item().url) ? 'Remove offline post' : 'Save post offline'
+        "
+      >
+        @if (offlinePosts.savingUrl() === item().url) {
+          Saving...
+        } @else if (offlinePosts.isSaved(item().url)) {
+          Remove Offline
+        } @else {
+          Save Offline
+        }
+      </button>
+    }
+  </div>
 </div>

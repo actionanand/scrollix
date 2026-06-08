@@ -159,7 +159,15 @@
   text-transform: lowercase;
 }
 
-.open-btn {
+.post-actions {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.open-btn,
+.offline-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -189,5 +197,22 @@
   &:focus-visible {
     outline: 2px solid var(--app-primary);
     outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+    transform: none;
+  }
+}
+
+.offline-btn {
+  border-color: #bfe1dc;
+  color: #087465;
+
+  &:hover:not(:disabled) {
+    background: #e9f4f2;
+    border-color: #7ec7bb;
+    color: #075f54;
   }
 }

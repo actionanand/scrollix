@@ -78,6 +78,28 @@
   </section>
 
   <section class="section">
+    <h2>App Config</h2>
+    <ul class="tips-list">
+      <li>
+        <code>SCROLLIX_CONFIG.postsPerPage</code> controls Posts pagination. Current value:
+        <code>10</code>.
+      </li>
+      <li>
+        <code>SCROLLIX_CONFIG.videosPerPage</code> controls Videos pagination. Current value:
+        <code>6</code>.
+      </li>
+      <li>
+        <code>SCROLLIX_CONFIG.offlinePostLimit</code> controls Android offline saves. Current value:
+        <code>5</code>.
+      </li>
+      <li>
+        <code>ANDROID_POST_EXTERNAL_APPS</code> controls post URLs that open natively instead of
+        in-app.
+      </li>
+    </ul>
+  </section>
+
+  <section class="section">
     <h2>Supported Types</h2>
     <div class="type-grid">
       <article class="type-card">
@@ -159,6 +181,10 @@
       <li>
         Add more app names to <code>ANDROID_POST_EXTERNAL_APPS</code> when a site should open
         natively.
+      </li>
+      <li>Android can save up to <code>SCROLLIX_CONFIG.offlinePostLimit</code> posts locally.</li>
+      <li>
+        Use <code>Show offline posts</code> to list saved posts and open them from local content.
       </li>
     </ul>
   </section>

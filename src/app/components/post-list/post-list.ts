@@ -2,9 +2,9 @@ import { Component, inject, computed, signal, ChangeDetectionStrategy } from '@a
 import { SheetDataService } from '../../services/sheet-data.service';
 import { AuthService } from '../../services/auth.service';
 import { PostOpenPreferenceService } from '../../services/post-open-preference.service';
+import { OfflinePostService } from '../../services/offline-post.service';
 import { PostCardComponent } from '../post-card/post-card';
-
-const PAGE_SIZE = 6;
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-post-list',
@@ -16,7 +16,9 @@ const PAGE_SIZE = 6;
 export class PostListComponent {
   private readonly sheetData = inject(SheetDataService);
   private readonly auth = inject(AuthService);
+  private readonly pageSize = environment.SCROLLIX_CONFIG.postsPerPage;
   protected readonly postOpenPreference = inject(PostOpenPreferenceService);
+  protected readonly offlinePosts = inject(OfflinePostService);
 
   protected readonly loading = this.sheetData.loading;
   protected readonly error = this.sheetData.error;
@@ -26,6 +28,8 @@ export class PostListComponent {
   protected readonly currentPage = signal(1);
 
   private readonly allPosts = computed(() => {
+    if (this.offlinePosts.showOfflineOnly()) return this.offlinePosts.savedMediaItems();
+
     const isLoggedIn = this.auth.isLoggedIn();
     return this.sheetData.items().filter((item) => {
       if (item.type !== 'post') return false;
@@ -44,7 +48,7 @@ export class PostListComponent {
   });
 
   protected readonly totalPages = computed(() =>
-    Math.max(1, Math.ceil(this.searchedPosts().length / PAGE_SIZE)),
+    Math.max(1, Math.ceil(this.searchedPosts().length / this.pageSize)),
   );
 
   protected readonly pageNumbers = computed(() => {
@@ -66,8 +70,8 @@ export class PostListComponent {
   });
 
   protected readonly paginatedPosts = computed(() => {
-    const start = (this.currentPage() - 1) * PAGE_SIZE;
-    return this.searchedPosts().slice(start, start + PAGE_SIZE);
+    const start = (this.currentPage() - 1) * this.pageSize;
+    return this.searchedPosts().slice(start, start + this.pageSize);
   });
 
   constructor() {
@@ -94,5 +98,11 @@ export class PostListComponent {
   protected onPostOpenModeChange(event: Event): void {
     const checked = (event.target as HTMLInputElement).checked;
     this.postOpenPreference.setOpenInApp(checked);
+  }
+
+  protected onOfflineOnlyChange(event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    this.offlinePosts.setShowOfflineOnly(checked);
+    this.currentPage.set(1);
   }
 }
