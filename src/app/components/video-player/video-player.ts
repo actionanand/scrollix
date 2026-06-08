@@ -22,21 +22,6 @@ interface DocumentPipApi {
   requestWindow(options: { width: number; height: number }): Promise<{ document: Document }>;
 }
 
-interface AndroidPipPlugin {
-  isSupported(): Promise<{ supported: boolean }>;
-  enter(options: { width: number; height: number }): Promise<void>;
-}
-
-declare global {
-  interface Window {
-    Capacitor?: {
-      Plugins?: {
-        ScrollixPip?: AndroidPipPlugin;
-      };
-    };
-  }
-}
-
 @Component({
   selector: 'app-video-player',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -298,7 +283,7 @@ export class VideoPlayerComponent {
     }
   }
 
-  private androidPipPlugin(): AndroidPipPlugin | undefined {
+  private androidPipPlugin(): ScrollixPipPlugin | undefined {
     return window.Capacitor?.Plugins?.ScrollixPip;
   }
 

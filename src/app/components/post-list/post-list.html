@@ -8,9 +8,31 @@
     aria-label="Search posts"
   />
   <button class="refresh-btn" (click)="onRefresh()" aria-label="Refresh" [disabled]="loading()">
-    ↻
+    Refresh
   </button>
 </div>
+
+@if (postOpenPreference.isAndroidApp()) {
+  <section class="android-open-mode" aria-label="Post opening preference">
+    <div>
+      <span class="android-open-mode__title">Post opening</span>
+      <span class="android-open-mode__desc">
+        {{ postOpenPreference.openInApp() ? 'In-app reader' : 'Default browser' }}
+      </span>
+    </div>
+    <label class="mode-switch">
+      <input
+        type="checkbox"
+        [checked]="postOpenPreference.openInApp()"
+        (change)="onPostOpenModeChange($event)"
+      />
+      <span class="mode-switch__track" aria-hidden="true">
+        <span class="mode-switch__thumb"></span>
+      </span>
+      <span class="mode-switch__label">Open in app</span>
+    </label>
+  </section>
+}
 
 @if (loading()) {
   <div class="loading" role="status">
@@ -27,7 +49,7 @@
 }
 
 @if (isOffline()) {
-  <div class="offline-banner" role="status">📡 You are offline</div>
+  <div class="offline-banner" role="status">You are offline</div>
 }
 
 <div class="post-grid">
@@ -48,11 +70,11 @@
       (click)="goToPage(currentPage() - 1)"
       aria-label="Previous page"
     >
-      ←
+      Prev
     </button>
     @for (page of pageNumbers(); track $index) {
       @if (page === -1) {
-        <span class="page-ellipsis">…</span>
+        <span class="page-ellipsis">...</span>
       } @else {
         <button
           class="page-btn page-num"
@@ -71,7 +93,35 @@
       (click)="goToPage(currentPage() + 1)"
       aria-label="Next page"
     >
-      →
+      Next
     </button>
   </nav>
+}
+
+@if (postOpenPreference.activePost(); as post) {
+  <section class="post-reader" aria-label="Post reader">
+    <header class="post-reader__bar">
+      <button class="post-reader__btn" type="button" (click)="closePostReader()">Close</button>
+      <div class="post-reader__info">
+        <span class="post-reader__title">{{ post.title || 'Post' }}</span>
+        <span class="post-reader__domain">{{ readerDomain(post.url) }}</span>
+      </div>
+      <button
+        class="post-reader__btn post-reader__btn--primary"
+        type="button"
+        (click)="openReaderPostInBrowser()"
+      >
+        Browser
+      </button>
+    </header>
+    @if (activeReaderUrl(); as readerUrl) {
+      <iframe
+        class="post-reader__frame"
+        [src]="readerUrl"
+        loading="lazy"
+        referrerpolicy="strict-origin-when-cross-origin"
+        [title]="post.title || 'Post reader'"
+      ></iframe>
+    }
+  </section>
 }
