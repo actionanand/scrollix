@@ -69,9 +69,7 @@
         Mute
       }
     </button>
-    @if (canUsePip()) {
-      <button class="ctrl-btn" (click)="requestPip()" aria-label="Picture in Picture">PIP</button>
-    }
+    <button class="ctrl-btn" (click)="requestPip()" aria-label="Picture in Picture">PIP</button>
     <button class="ctrl-btn" (click)="requestFullscreen()" aria-label="Fullscreen">Full</button>
     <button class="ctrl-btn" (click)="openOriginal()" aria-label="Open original">Open</button>
     <button class="ctrl-btn ctrl-btn--primary" (click)="copyLink()" aria-label="Copy link">
@@ -80,5 +78,39 @@
   </div>
   @if (formattedStartTime()) {
     <span class="start-time">Starts at {{ formattedStartTime() }}</span>
+  }
+  @if (miniPipSafeUrl(); as miniUrl) {
+    <section
+      class="mini-pip"
+      [class.mini-pip--vertical]="isVertical()"
+      aria-label="Picture in picture player"
+    >
+      <div class="mini-pip__bar">
+        <span class="mini-pip__title">{{ item().title || 'Now playing' }}</span>
+        <button
+          class="mini-pip__close"
+          type="button"
+          (click)="closeMiniPip()"
+          aria-label="Close PIP"
+        >
+          Close
+        </button>
+      </div>
+      <iframe
+        class="mini-pip__frame"
+        [src]="miniUrl"
+        allow="
+          accelerometer;
+          autoplay;
+          clipboard-write;
+          encrypted-media;
+          gyroscope;
+          picture-in-picture;
+          web-share;
+        "
+        allowfullscreen
+        [title]="item().title || 'Picture in picture player'"
+      ></iframe>
+    </section>
   }
 </div>

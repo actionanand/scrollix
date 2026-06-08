@@ -1,8 +1,8 @@
 <div class="detail-page">
   <div class="detail-header">
-    <button class="back-btn" (click)="goBack()" aria-label="Back to videos">← Back</button>
+    <button class="back-btn" (click)="goBack()" aria-label="Back to videos">Back</button>
     @if (item()) {
-      <button class="copy-btn" (click)="copyLink()" aria-label="Copy link">📋 Copy Link</button>
+      <button class="copy-btn" (click)="copyLink()" aria-label="Copy link">Copy Link</button>
     }
   </div>
 
@@ -31,7 +31,7 @@
     <div class="not-found">
       <h2>Video not found</h2>
       <p>This video doesn't exist or requires login.</p>
-      <a routerLink="/videos" class="home-link">← Back to Videos</a>
+      <a routerLink="/videos" class="home-link">Back to Videos</a>
     </div>
   }
 </div>
