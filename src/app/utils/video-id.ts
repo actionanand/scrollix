@@ -94,9 +94,20 @@ export function buildTikTokVideoUrl(urlOrId: string): string {
   return id ? `https://www.tiktok.com/@_/video/${id}` : raw;
 }
 
-export function buildTikTokEmbedUrl(urlOrId: string): string {
+export function buildTikTokEmbedUrl(urlOrId: string, muted = false): string {
   const id = extractTikTokVideoId(urlOrId);
-  return id ? `https://www.tiktok.com/embed/v2/${id}` : buildTikTokVideoUrl(urlOrId);
+  if (!id) return buildTikTokVideoUrl(urlOrId);
+
+  const params = new URLSearchParams({
+    autoplay: '0',
+    controls: '1',
+    description: '0',
+    loop: '0',
+    muted: muted ? '1' : '0',
+    music_info: '0',
+    rel: '0',
+  });
+  return `https://www.tiktok.com/player/v1/${id}?${params.toString()}`;
 }
 
 function ensureScheme(value: string): string {

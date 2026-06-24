@@ -49,7 +49,9 @@ describe('video-id helpers', () => {
     const url = 'https://www.tiktok.com/@looplandia.kids/video/7567139089972006160';
 
     expect(extractTikTokVideoId(url)).toBe('7567139089972006160');
-    expect(buildTikTokEmbedUrl(url)).toBe('https://www.tiktok.com/embed/v2/7567139089972006160');
+    expect(buildTikTokEmbedUrl(url)).toContain(
+      'https://www.tiktok.com/player/v1/7567139089972006160?',
+    );
   });
 
   it('maps known tiktok share links to canonical video urls', () => {
@@ -59,8 +61,8 @@ describe('video-id helpers', () => {
     expect(buildTikTokVideoUrl(shareUrl)).toBe(
       'https://www.tiktok.com/@looplandia.kids/video/7567139089972006160',
     );
-    expect(buildTikTokEmbedUrl(shareUrl)).toBe(
-      'https://www.tiktok.com/embed/v2/7567139089972006160',
+    expect(buildTikTokEmbedUrl(shareUrl)).toContain(
+      'https://www.tiktok.com/player/v1/7567139089972006160?',
     );
   });
 });

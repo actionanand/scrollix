@@ -373,7 +373,10 @@ export class VideoPlayerComponent {
 
       case 'tiktok':
       case 'tiktok-share':
-        return buildTikTokEmbedUrl(item.type === 'tiktok-share' ? this.tiktokVideoUrl() : item.url);
+        return buildTikTokEmbedUrl(
+          item.type === 'tiktok-share' ? this.tiktokVideoUrl() : item.url,
+          muted,
+        );
 
       case 'dailymotion': {
         const p = new URLSearchParams({
