@@ -17,6 +17,8 @@ const TYPE_LABELS: Record<string, string> = {
   'facebook-share': 'Facebook Share',
   dailymotion: 'Dailymotion',
   vimeo: 'Vimeo',
+  tiktok: 'TikTok',
+  'tiktok-share': 'TikTok Share',
   'other-video': 'Other',
 };
 
