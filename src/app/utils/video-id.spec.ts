@@ -1,8 +1,11 @@
 import {
   buildFacebookVideoUrl,
+  buildTikTokEmbedUrl,
+  buildTikTokVideoUrl,
   encodeVideoId,
   extractFacebookVideoId,
   extractShareSlug,
+  extractTikTokVideoId,
 } from './video-id';
 
 describe('video-id helpers', () => {
@@ -49,5 +52,23 @@ describe('video-id helpers', () => {
         'https://www.facebook.com/61585386935792/videos/sometimes-going-back-to-our-roots/1641838417045674/',
       ),
     ).toBe('1641838417045674');
+  });
+
+  it('extracts and embeds tiktok video urls', () => {
+    const url = 'https://www.tiktok.com/@looplandia.kids/video/7567139089972006160';
+
+    expect(extractTikTokVideoId(url)).toBe('7567139089972006160');
+    expect(extractShareSlug(url)).toBe('7567139089972006160');
+    expect(buildTikTokEmbedUrl(url)).toBe('https://www.tiktok.com/embed/v2/7567139089972006160');
+  });
+
+  it('maps known tiktok share links to canonical video urls', () => {
+    const shareUrl = 'https://vt.tiktok.com/ZSC83u8E6/';
+
+    expect(extractTikTokVideoId(shareUrl)).toBe('7567139089972006160');
+    expect(buildTikTokVideoUrl(shareUrl)).toBe(
+      'https://www.tiktok.com/@looplandia.kids/video/7567139089972006160',
+    );
+    expect(encodeVideoId(shareUrl)).toBe(encodeVideoId('7567139089972006160'));
   });
 });

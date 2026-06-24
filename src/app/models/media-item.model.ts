@@ -5,6 +5,8 @@ export type MediaType =
   | 'facebook-reel'
   | 'facebook'
   | 'facebook-share'
+  | 'tiktok'
+  | 'tiktok-share'
   | 'dailymotion'
   | 'vimeo'
   | 'other-video'

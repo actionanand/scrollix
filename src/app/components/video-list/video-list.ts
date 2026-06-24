@@ -15,6 +15,8 @@ const TYPE_LABELS: Record<string, string> = {
   facebook: 'Facebook',
   'facebook-reel': 'Facebook Reel',
   'facebook-share': 'Facebook Share',
+  tiktok: 'TikTok',
+  'tiktok-share': 'TikTok Share',
   dailymotion: 'Dailymotion',
   vimeo: 'Vimeo',
   'other-video': 'Other',
@@ -110,7 +112,9 @@ export class VideoListComponent {
       type === 'instagram' ||
       type === 'youtube-short' ||
       type === 'facebook-reel' ||
-      type === 'facebook-share'
+      type === 'facebook-share' ||
+      type === 'tiktok' ||
+      type === 'tiktok-share'
     );
   });
 
@@ -127,12 +131,16 @@ export class VideoListComponent {
       video.type === 'instagram' ||
       video.type === 'youtube-short' ||
       video.type === 'facebook-reel' ||
-      video.type === 'facebook-share'
+      video.type === 'facebook-share' ||
+      video.type === 'tiktok' ||
+      video.type === 'tiktok-share'
     );
   }
 
   private shareSource(video: MediaItem): string {
-    return video.type === 'facebook-share' && video.resolvedUrl ? video.resolvedUrl : video.url;
+    if (video.type === 'facebook-share' && video.resolvedUrl) return video.resolvedUrl;
+    if (video.type === 'tiktok-share' && video.resolvedUrl) return video.resolvedUrl;
+    return video.url;
   }
 
   protected onFilterChange(event: Event): void {

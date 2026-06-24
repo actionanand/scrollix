@@ -4,7 +4,12 @@ import { Observable, catchError, forkJoin, map, of } from 'rxjs';
 import { MediaItem, MediaType, GvizResponse } from '../models/media-item.model';
 import { ToastService } from './toast.service';
 import { environment } from '../../environments/environment';
-import { buildFacebookVideoUrl, extractFacebookVideoId } from '../utils/video-id';
+import {
+  buildFacebookVideoUrl,
+  buildTikTokVideoUrl,
+  extractFacebookVideoId,
+  extractTikTokVideoId,
+} from '../utils/video-id';
 
 const CACHE_KEY = 'scrollix_sheet_data';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -72,7 +77,7 @@ export class SheetDataService {
       next: (text) => {
         try {
           const items = this.parseGvizResponse(text);
-          this.resolveFacebookShareItems(items).subscribe({
+          this.resolveShareItems(items).subscribe({
             next: (resolvedItems) => {
               this._items.set(resolvedItems);
               this.saveToCache(resolvedItems);
@@ -125,26 +130,39 @@ export class SheetDataService {
     }
   }
 
-  private resolveFacebookShareItems(items: MediaItem[]): Observable<MediaItem[]> {
+  private resolveShareItems(items: MediaItem[]): Observable<MediaItem[]> {
     if (items.length === 0) return of([]);
-    return forkJoin(items.map((item) => this.resolveFacebookShareItem(item)));
+    return forkJoin(items.map((item) => this.resolveShareItem(item)));
   }
 
-  private resolveFacebookShareItem(item: MediaItem): Observable<MediaItem> {
-    if (item.type !== 'facebook-share') return of(item);
+  private resolveShareItem(item: MediaItem): Observable<MediaItem> {
+    if (item.type === 'facebook-share') {
+      return this.resolveRedirectShareItem(item, extractFacebookVideoId, buildFacebookVideoUrl);
+    }
 
-    const source = item.resolvedUrl || item.url;
-    const existingId = extractFacebookVideoId(source);
+    if (item.type === 'tiktok-share') {
+      return this.resolveRedirectShareItem(item, extractTikTokVideoId, buildTikTokVideoUrl);
+    }
+
+    return of(item);
+  }
+
+  private resolveRedirectShareItem(
+    item: MediaItem,
+    extractId: (urlOrId: string) => string | null,
+    buildUrl: (urlOrId: string) => string,
+  ): Observable<MediaItem> {
+    const existingId = extractId(item.url);
     if (existingId) {
-      return of({ ...item, resolvedUrl: buildFacebookVideoUrl(existingId) });
+      return of({ ...item, resolvedUrl: buildUrl(item.url) });
     }
 
     const apiUrl = `https://api.microlink.io/?url=${encodeURIComponent(item.url)}`;
     return this.http.get<MicrolinkResolveResponse>(apiUrl).pipe(
       map((res) => {
         const resolvedUrl = res.status === 'success' ? (res.data?.url ?? '') : '';
-        const resolvedId = extractFacebookVideoId(resolvedUrl);
-        return resolvedId ? { ...item, resolvedUrl: buildFacebookVideoUrl(resolvedId) } : item;
+        const resolvedId = extractId(resolvedUrl);
+        return resolvedId ? { ...item, resolvedUrl: buildUrl(resolvedUrl) } : item;
       }),
       catchError(() => of(item)),
     );
@@ -171,7 +189,7 @@ export class SheetDataService {
         title: String(row.c[4]?.v ?? ''),
         desc: String(row.c[5]?.v ?? ''),
         startTime: row.c[6]?.v != null ? Number(row.c[6]!.v) : null,
-        resolvedUrl: String(row.c[7]?.v ?? ''),
+        resolvedUrl: '',
       }));
   }
 }

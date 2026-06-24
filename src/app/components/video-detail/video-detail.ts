@@ -47,7 +47,8 @@ export class VideoDetailComponent {
     const mediaItem = this.item();
     if (!mediaItem) return '';
     const source =
-      mediaItem.type === 'facebook-share' && mediaItem.resolvedUrl
+      (mediaItem.type === 'facebook-share' || mediaItem.type === 'tiktok-share') &&
+      mediaItem.resolvedUrl
         ? mediaItem.resolvedUrl
         : mediaItem.url;
     return buildVideoShareUrl(encodeVideoId(source));

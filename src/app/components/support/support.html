@@ -66,12 +66,6 @@
             <td>No</td>
             <td>YouTube start time in seconds.</td>
           </tr>
-          <tr>
-            <td>H</td>
-            <td>Resolved URL/ID</td>
-            <td>No</td>
-            <td>Optional resolved Facebook URL or numeric reel/video ID.</td>
-          </tr>
         </tbody>
       </table>
     </div>
@@ -133,7 +127,24 @@
         <p>
           Paste the full share URL, for example <code>https://www.facebook.com/share/v/...</code>.
         </p>
-        <p>Column H can hold the resolved numeric ID when needed.</p>
+        <p>The app resolves the link before embedding it like a normal Facebook video.</p>
+      </article>
+
+      <article class="type-card">
+        <h3>tiktok</h3>
+        <p>
+          Paste the full TikTok video URL, for example
+          <code>https://www.tiktok.com/@looplandia.kids/video/7567139089972006160</code>.
+        </p>
+      </article>
+
+      <article class="type-card">
+        <h3>tiktok-share</h3>
+        <p>
+          Paste the short share URL, for example
+          <code>https://vt.tiktok.com/ZSC83u8E6/</code>.
+        </p>
+        <p>The app resolves it before embedding it like a normal TikTok video.</p>
       </article>
 
       <article class="type-card">
@@ -195,6 +206,8 @@
       <li>Short IDs, such as <code>K6o9JTcPgOA</code>, are used directly as the slug source.</li>
       <li>Resolved Facebook reel links use the numeric ID after <code>/reel/</code>.</li>
       <li>Known Facebook share links resolve before encoding.</li>
+      <li>TikTok links use the numeric video ID after <code>/video/</code>.</li>
+      <li>Known TikTok share links resolve before encoding.</li>
       <li>The final slug is base-36 encoded for a compact permanent URL.</li>
     </ol>
   </section>
@@ -206,9 +219,9 @@
       <li><strong>Title</strong> and <strong>Desc</strong> are optional for all types.</li>
       <li><strong>Start Time</strong> only applies to YouTube videos.</li>
       <li>For <code>post</code>, paste the full URL of the blog or social post.</li>
-      <li>
-        For <code>facebook-share</code>, paste the share link as-is; column H is optional fallback.
-      </li>
+      <li>For <code>facebook-share</code>, paste the share link as-is.</li>
+      <li>For <code>tiktok</code>, paste the full TikTok video URL.</li>
+      <li>For <code>tiktok-share</code>, paste the short <code>vt.tiktok.com</code> share URL.</li>
     </ul>
   </section>
 </div>
