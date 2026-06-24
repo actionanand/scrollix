@@ -52,6 +52,9 @@ describe('video-id helpers', () => {
     expect(buildTikTokEmbedUrl(url)).toContain(
       'https://www.tiktok.com/player/v1/7567139089972006160?',
     );
+    expect(buildTikTokEmbedUrl(url, false, 'legacy')).toBe(
+      'https://www.tiktok.com/embed/v2/7567139089972006160',
+    );
   });
 
   it('maps known tiktok share links to canonical video urls', () => {
