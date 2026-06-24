@@ -94,9 +94,17 @@ export function buildTikTokVideoUrl(urlOrId: string): string {
   return id ? `https://www.tiktok.com/@_/video/${id}` : raw;
 }
 
-export function buildTikTokEmbedUrl(urlOrId: string, muted = false): string {
+export function buildTikTokEmbedUrl(
+  urlOrId: string,
+  muted = false,
+  mode: 'player' | 'legacy' = 'player',
+): string {
   const id = extractTikTokVideoId(urlOrId);
   if (!id) return buildTikTokVideoUrl(urlOrId);
+
+  if (mode === 'legacy') {
+    return `https://www.tiktok.com/embed/v2/${id}`;
+  }
 
   const params = new URLSearchParams({
     autoplay: '0',

@@ -38,6 +38,7 @@ export class VideoPlayerComponent {
   readonly item = input.required<MediaItem>();
   readonly vertical = input(false);
   readonly showMetadata = input(true);
+  readonly detailMode = input(false);
 
   private readonly sanitizer = inject(DomSanitizer);
   private readonly toast = inject(ToastService);
@@ -302,6 +303,16 @@ export class VideoPlayerComponent {
     return window.Capacitor?.Plugins?.ScrollixPip;
   }
 
+  private isAndroidApp(): boolean {
+    const capacitor = window.Capacitor;
+    return capacitor?.isNativePlatform?.() === true && capacitor.getPlatform?.() === 'android';
+  }
+
+  private tiktokEmbedMode(): 'player' | 'legacy' {
+    if (!this.detailMode()) return 'legacy';
+    return this.isAndroidApp() ? 'legacy' : 'player';
+  }
+
   private enterAppFullscreen(): void {
     if (this.appFullscreen()) return;
     this.appFullscreen.set(true);
@@ -376,6 +387,7 @@ export class VideoPlayerComponent {
         return buildTikTokEmbedUrl(
           item.type === 'tiktok-share' ? this.tiktokVideoUrl() : item.url,
           muted,
+          this.tiktokEmbedMode(),
         );
 
       case 'dailymotion': {
