@@ -66,6 +66,15 @@
             <td>No</td>
             <td>YouTube start time in seconds.</td>
           </tr>
+          <tr>
+            <td>H</td>
+            <td>Hash</td>
+            <td>Yes</td>
+            <td>
+              Unique page ID for shareable video links, for example
+              <code>1782327289455-R2-455437-fb6da68a4f6f</code>.
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -203,12 +212,18 @@
   <section class="section">
     <h2>Shareable Video Links</h2>
     <ol class="logic-list">
-      <li>Short IDs, such as <code>K6o9JTcPgOA</code>, are used directly as the slug source.</li>
-      <li>Resolved Facebook reel links use the numeric ID after <code>/reel/</code>.</li>
-      <li>Known Facebook share links resolve before encoding.</li>
-      <li>TikTok links use the numeric video ID after <code>/video/</code>.</li>
-      <li>Known TikTok share links resolve before encoding.</li>
-      <li>The final slug is base-36 encoded for a compact permanent URL.</li>
+      <li>Column H, <strong>Hash</strong>, is the permanent dynamic page ID.</li>
+      <li>
+        A video detail URL looks like <code>/video/1782327289455-R2-455437-fb6da68a4f6f</code>.
+      </li>
+      <li>
+        Generate a new hash whenever the row content changes, such as
+        <code>Date.now()-Rrow-random-uuid</code>.
+      </li>
+      <li>
+        Share links such as <code>facebook-share</code> and <code>tiktok-share</code> are resolved
+        only when that row is viewed or prepared for the current video page.
+      </li>
     </ol>
   </section>
 
@@ -218,6 +233,7 @@
       <li>Set <strong>Protected</strong> to <code>Yes</code> to require login.</li>
       <li><strong>Title</strong> and <strong>Desc</strong> are optional for all types.</li>
       <li><strong>Start Time</strong> only applies to YouTube videos.</li>
+      <li><strong>Hash</strong> is required for every video row and must be unique.</li>
       <li>For <code>post</code>, paste the full URL of the blog or social post.</li>
       <li>For <code>facebook-share</code>, paste the share link as-is.</li>
       <li>For <code>tiktok</code>, paste the full TikTok video URL.</li>

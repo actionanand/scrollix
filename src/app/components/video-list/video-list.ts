@@ -11,7 +11,6 @@ import { SheetDataService } from '../../services/sheet-data.service';
 import { AuthService } from '../../services/auth.service';
 import { VideoPlayerComponent } from '../video-player/video-player';
 import { MediaItem, MediaType } from '../../models/media-item.model';
-import { encodeVideoId } from '../../utils/video-id';
 import { environment } from '../../../environments/environment';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -148,7 +147,7 @@ export class VideoListComponent {
   }
 
   protected encodeId(video: MediaItem): string {
-    return encodeVideoId(this.shareSource(video));
+    return video.hash;
   }
 
   protected isVerticalVideo(video: MediaItem): boolean {
@@ -164,12 +163,6 @@ export class VideoListComponent {
 
   protected isProcessing(video: MediaItem): boolean {
     return this.resolvingIds().has(video.sNo);
-  }
-
-  private shareSource(video: MediaItem): string {
-    if (video.type === 'facebook-share' && video.resolvedUrl) return video.resolvedUrl;
-    if (video.type === 'tiktok-share' && video.resolvedUrl) return video.resolvedUrl;
-    return video.url;
   }
 
   protected onFilterChange(event: Event): void {

@@ -2,9 +2,7 @@ import {
   buildFacebookVideoUrl,
   buildTikTokEmbedUrl,
   buildTikTokVideoUrl,
-  encodeVideoId,
   extractFacebookVideoId,
-  extractShareSlug,
   extractTikTokVideoId,
 } from './video-id';
 
@@ -14,14 +12,7 @@ describe('video-id helpers', () => {
       'https://www.facebook.com/reel/2365458590609161/?rdid=zzdc4yGiLAqkDG2Q&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2Fv%2F1Dp1wqwvkX%2F#';
 
     expect(extractFacebookVideoId(url)).toBe('2365458590609161');
-    expect(extractShareSlug(url)).toBe('2365458590609161');
     expect(buildFacebookVideoUrl(url)).toBe('https://www.facebook.com/reel/2365458590609161');
-  });
-
-  it('uses facebook video ids for encoded dynamic routes', () => {
-    const resolvedUrl = 'https://www.facebook.com/reel/2365458590609161/?rdid=abc';
-
-    expect(encodeVideoId(resolvedUrl)).toBe(encodeVideoId('2365458590609161'));
   });
 
   it('extracts ids from facebook links without requiring www', () => {
@@ -58,7 +49,6 @@ describe('video-id helpers', () => {
     const url = 'https://www.tiktok.com/@looplandia.kids/video/7567139089972006160';
 
     expect(extractTikTokVideoId(url)).toBe('7567139089972006160');
-    expect(extractShareSlug(url)).toBe('7567139089972006160');
     expect(buildTikTokEmbedUrl(url)).toBe('https://www.tiktok.com/embed/v2/7567139089972006160');
   });
 
@@ -69,6 +59,8 @@ describe('video-id helpers', () => {
     expect(buildTikTokVideoUrl(shareUrl)).toBe(
       'https://www.tiktok.com/@looplandia.kids/video/7567139089972006160',
     );
-    expect(encodeVideoId(shareUrl)).toBe(encodeVideoId('7567139089972006160'));
+    expect(buildTikTokEmbedUrl(shareUrl)).toBe(
+      'https://www.tiktok.com/embed/v2/7567139089972006160',
+    );
   });
 });

@@ -1,16 +1,3 @@
-/**
- * Shareable video IDs are derived from the video's URL slug.
- *
- * - Short IDs (e.g. YouTube ID "K6o9JTcPgOA") are used directly.
- * - Full URLs are reduced to their last meaningful path segment.
- * - The slug is then base36-encoded for a compact, URL-safe ID.
- *
- * Encoding: each char code is zero-padded to 3 digits, concatenated,
- * then parsed as a BigInt and converted to base-36.
- *
- * This makes the ID permanent as long as the URL column doesn't change.
- */
-
 const FACEBOOK_SHARE_ID_OVERRIDES: Record<string, string> = {
   '1Dp1wqwvkX': '2365458590609161',
   '1B5RTTQrfZ': '1491297816129848',
@@ -22,23 +9,6 @@ const FACEBOOK_SHARE_ID_OVERRIDES: Record<string, string> = {
 const TIKTOK_SHARE_URL_OVERRIDES: Record<string, string> = {
   ZSC83u8E6: 'https://www.tiktok.com/@looplandia.kids/video/7567139089972006160',
 };
-
-export function encodeVideoId(urlOrSlug: string): string {
-  const slug = extractShareSlug(urlOrSlug);
-  if (!slug) return '0';
-  const numStr = Array.from(slug)
-    .map((ch) => ch.charCodeAt(0).toString().padStart(3, '0'))
-    .join('');
-  return parseInt36(numStr, 10).toString(36);
-}
-
-export function extractShareSlug(urlOrSlug: string): string {
-  const facebookVideoId = extractFacebookVideoId(urlOrSlug);
-  if (facebookVideoId) return facebookVideoId;
-  const tiktokVideoId = extractTikTokVideoId(urlOrSlug);
-  if (tiktokVideoId) return tiktokVideoId;
-  return extractSlug(urlOrSlug);
-}
 
 export function extractFacebookVideoId(urlOrId: string): string | null {
   const raw = urlOrId.trim().replace(/#.*$/, '');
@@ -129,33 +99,6 @@ export function buildTikTokEmbedUrl(urlOrId: string): string {
   return id ? `https://www.tiktok.com/embed/v2/${id}` : buildTikTokVideoUrl(urlOrId);
 }
 
-export function decodeVideoId(encoded: string): string {
-  if (!encoded || encoded === '0') return '';
-  try {
-    let numStr = parseInt36(encoded, 36).toString(10);
-    while (numStr.length % 3 !== 0) numStr = '0' + numStr;
-    let slug = '';
-    for (let i = 0; i < numStr.length; i += 3) {
-      const code = Number(numStr.substring(i, i + 3));
-      if (code > 0) slug += String.fromCharCode(code);
-    }
-    return slug;
-  } catch {
-    return '';
-  }
-}
-
-function parseInt36(s: string, radix: number): bigint {
-  const r = BigInt(radix);
-  let result = 0n;
-  for (const ch of s) {
-    const digit = parseInt(ch, radix);
-    if (Number.isNaN(digit)) return 0n;
-    result = result * r + BigInt(digit);
-  }
-  return result;
-}
-
 function ensureScheme(value: string): string {
   if (!/^https?:\/\//i.test(value)) {
     return 'https://' + value.replace(/^\/+/, '');
@@ -188,19 +131,4 @@ function findLastNumericSegment(pathname: string): string | null {
     if (/^\d+$/.test(segment)) return segment;
   }
   return null;
-}
-
-function extractSlug(urlOrSlug: string): string {
-  // If it looks like a plain ID (no slashes, no dots) use as-is
-  if (!/[/.]/.test(urlOrSlug)) return urlOrSlug;
-  // Otherwise extract last meaningful path segment
-  try {
-    const u = new URL(urlOrSlug);
-    const segments = u.pathname.split('/').filter(Boolean);
-    return segments[segments.length - 1] ?? urlOrSlug;
-  } catch {
-    // Not a valid URL, try splitting by /
-    const segments = urlOrSlug.split('/').filter(Boolean);
-    return segments[segments.length - 1] ?? urlOrSlug;
-  }
 }

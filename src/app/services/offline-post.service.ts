@@ -36,6 +36,7 @@ export class OfflinePostService {
       title: post.title,
       desc: post.desc,
       startTime: null,
+      hash: `offline-${post.savedAt}`,
       resolvedUrl: '',
     })),
   );
