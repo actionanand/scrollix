@@ -12,7 +12,14 @@ import {
   DestroyRef,
 } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
-import { buildFacebookVideoUrl, encodeVideoId, extractFacebookVideoId } from '../../utils/video-id';
+import {
+  buildFacebookVideoUrl,
+  buildTikTokEmbedUrl,
+  buildTikTokVideoUrl,
+  encodeVideoId,
+  extractFacebookVideoId,
+  extractTikTokVideoId,
+} from '../../utils/video-id';
 import { MediaItem } from '../../models/media-item.model';
 import { ToastService } from '../../services/toast.service';
 import { YoutubeService, YtPlayer } from '../../services/youtube.service';
@@ -45,6 +52,7 @@ export class VideoPlayerComponent {
   protected readonly appFullscreen = signal(false);
   protected readonly miniPipUrl = signal<string | null>(null);
   private readonly resolvedFacebookVideoUrl = signal<string | null>(null);
+  private readonly resolvedTikTokVideoUrl = signal<string | null>(null);
   private ignoreNextPopState = false;
 
   private readonly iframeRef = viewChild<ElementRef<HTMLIFrameElement>>('playerIframe');
@@ -68,7 +76,9 @@ export class VideoPlayerComponent {
       type === 'youtube-short' ||
       type === 'instagram' ||
       type === 'facebook-reel' ||
-      type === 'facebook-share'
+      type === 'facebook-share' ||
+      type === 'tiktok' ||
+      type === 'tiktok-share'
     );
   });
 
@@ -87,6 +97,12 @@ export class VideoPlayerComponent {
     return this.resolvedFacebookVideoUrl() ?? buildFacebookVideoUrl(source);
   });
 
+  private readonly tiktokVideoUrl = computed(() => {
+    const item = this.item();
+    const source = item.type === 'tiktok-share' && item.resolvedUrl ? item.resolvedUrl : item.url;
+    return this.resolvedTikTokVideoUrl() ?? buildTikTokVideoUrl(source);
+  });
+
   protected readonly ytPlayerId = computed(() => `yt-player-${this.item().sNo}`);
 
   protected readonly embedUrl = computed(() => {
@@ -100,6 +116,7 @@ export class VideoPlayerComponent {
   constructor() {
     afterNextRender(() => {
       void this.resolveFacebookShareRedirect();
+      void this.resolveTikTokShareRedirect();
       if (!this.isYoutube()) return;
       this.ytService.load().then(() => {
         const item = this.item();
@@ -295,7 +312,9 @@ export class VideoPlayerComponent {
 
   private async resolveFacebookShareRedirect(): Promise<void> {
     const item = this.item();
-    if (item.type !== 'facebook-share' || extractFacebookVideoId(item.url)) return;
+    if (item.type !== 'facebook-share' || item.resolvedUrl || extractFacebookVideoId(item.url)) {
+      return;
+    }
 
     try {
       const response = await fetch(item.url, {
@@ -306,6 +325,27 @@ export class VideoPlayerComponent {
       const id = extractFacebookVideoId(response.url);
       if (id) {
         this.resolvedFacebookVideoUrl.set(buildFacebookVideoUrl(id));
+      }
+    } catch {
+      // Some browsers do not expose cross-origin redirect targets for share links.
+    }
+  }
+
+  private async resolveTikTokShareRedirect(): Promise<void> {
+    const item = this.item();
+    if (item.type !== 'tiktok-share' || item.resolvedUrl || extractTikTokVideoId(item.url)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(item.url, {
+        redirect: 'follow',
+        mode: 'no-cors',
+        credentials: 'omit',
+      });
+      const id = extractTikTokVideoId(response.url);
+      if (id) {
+        this.resolvedTikTokVideoUrl.set(buildTikTokVideoUrl(response.url));
       }
     } catch {
       // Some browsers do not expose cross-origin redirect targets for share links.
@@ -332,6 +372,10 @@ export class VideoPlayerComponent {
         const href = this.facebookVideoUrl();
         return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(href)}&show_text=false&mute=${muteVal}`;
       }
+
+      case 'tiktok':
+      case 'tiktok-share':
+        return buildTikTokEmbedUrl(item.type === 'tiktok-share' ? this.tiktokVideoUrl() : item.url);
 
       case 'dailymotion': {
         const p = new URLSearchParams({
@@ -372,6 +416,10 @@ export class VideoPlayerComponent {
         return `https://www.facebook.com/reel/${item.url}`;
       case 'facebook-share':
         return this.facebookVideoUrl();
+      case 'tiktok':
+        return buildTikTokVideoUrl(item.url);
+      case 'tiktok-share':
+        return this.tiktokVideoUrl();
       case 'dailymotion':
         return `https://www.dailymotion.com/video/${item.url}`;
       case 'vimeo':
@@ -403,7 +451,9 @@ export class VideoPlayerComponent {
   }
 
   private shareSource(item: MediaItem): string {
-    return item.type === 'facebook-share' && item.resolvedUrl ? item.resolvedUrl : item.url;
+    if (item.type === 'facebook-share' && item.resolvedUrl) return item.resolvedUrl;
+    if (item.type === 'tiktok-share' && item.resolvedUrl) return item.resolvedUrl;
+    return item.url;
   }
 
   private formatStartTime(seconds: number | null): string {

@@ -19,6 +19,10 @@ const FACEBOOK_SHARE_ID_OVERRIDES: Record<string, string> = {
   '18jaUaRFea': '1641838417045674',
 };
 
+const TIKTOK_SHARE_URL_OVERRIDES: Record<string, string> = {
+  ZSC83u8E6: 'https://www.tiktok.com/@looplandia.kids/video/7567139089972006160',
+};
+
 export function encodeVideoId(urlOrSlug: string): string {
   const slug = extractShareSlug(urlOrSlug);
   if (!slug) return '0';
@@ -31,6 +35,8 @@ export function encodeVideoId(urlOrSlug: string): string {
 export function extractShareSlug(urlOrSlug: string): string {
   const facebookVideoId = extractFacebookVideoId(urlOrSlug);
   if (facebookVideoId) return facebookVideoId;
+  const tiktokVideoId = extractTikTokVideoId(urlOrSlug);
+  if (tiktokVideoId) return tiktokVideoId;
   return extractSlug(urlOrSlug);
 }
 
@@ -80,6 +86,49 @@ export function buildFacebookVideoUrl(urlOrId: string): string {
   return id ? `https://www.facebook.com/reel/${id}` : normalizeFacebookUrl(urlOrId);
 }
 
+export function extractTikTokVideoId(urlOrId: string): string | null {
+  const raw = urlOrId.trim().replace(/#.*$/, '');
+  if (/^\d+$/.test(raw)) return raw;
+
+  try {
+    const url = new URL(ensureScheme(raw));
+    if (!/(^|\.)tiktok\.com$/i.test(url.hostname)) return null;
+
+    const overrideUrl = resolveTikTokShareOverride(url);
+    if (overrideUrl) return extractTikTokVideoId(overrideUrl);
+
+    const videoMatch = url.pathname.match(/\/video\/(\d+)/i);
+    if (videoMatch) return videoMatch[1];
+
+    return findLastNumericSegment(url.pathname);
+  } catch {
+    return null;
+  }
+}
+
+export function buildTikTokVideoUrl(urlOrId: string): string {
+  const raw = urlOrId.trim().replace(/#.*$/, '');
+  const overrideUrl = resolveTikTokShareOverrideFromRaw(raw);
+  if (overrideUrl) return overrideUrl;
+
+  try {
+    const url = new URL(ensureScheme(raw));
+    if (/(^|\.)tiktok\.com$/i.test(url.hostname)) {
+      return url.origin + url.pathname.replace(/\/$/, '');
+    }
+  } catch {
+    // Fall back to ID-only canonical URL below.
+  }
+
+  const id = extractTikTokVideoId(raw);
+  return id ? `https://www.tiktok.com/@_/video/${id}` : raw;
+}
+
+export function buildTikTokEmbedUrl(urlOrId: string): string {
+  const id = extractTikTokVideoId(urlOrId);
+  return id ? `https://www.tiktok.com/embed/v2/${id}` : buildTikTokVideoUrl(urlOrId);
+}
+
 export function decodeVideoId(encoded: string): string {
   if (!encoded || encoded === '0') return '';
   try {
@@ -116,6 +165,20 @@ function ensureScheme(value: string): string {
 
 function extractFacebookShareCode(pathname: string): string | null {
   return pathname.match(/\/share\/[rv]\/([^/?#]+)/i)?.[1] ?? null;
+}
+
+function resolveTikTokShareOverride(url: URL): string | null {
+  if (!/^v[tm]\.tiktok\.com$/i.test(url.hostname)) return null;
+  const code = url.pathname.split('/').filter(Boolean)[0];
+  return code ? (TIKTOK_SHARE_URL_OVERRIDES[code] ?? null) : null;
+}
+
+function resolveTikTokShareOverrideFromRaw(raw: string): string | null {
+  try {
+    return resolveTikTokShareOverride(new URL(ensureScheme(raw)));
+  } catch {
+    return null;
+  }
 }
 
 function findLastNumericSegment(pathname: string): string | null {

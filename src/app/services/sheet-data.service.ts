@@ -1,13 +1,19 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { Observable, catchError, map, of } from 'rxjs';
 import { MediaItem, MediaType, GvizResponse } from '../models/media-item.model';
 import { ToastService } from './toast.service';
 import { environment } from '../../environments/environment';
-import { buildFacebookVideoUrl, extractFacebookVideoId } from '../utils/video-id';
+import {
+  buildFacebookVideoUrl,
+  buildTikTokVideoUrl,
+  extractFacebookVideoId,
+  extractTikTokVideoId,
+} from '../utils/video-id';
 
 const CACHE_KEY = 'scrollix_sheet_data';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const DYNAMIC_LOOKUP_LIMIT = 12;
 
 interface CacheEntry {
   timestamp: number;
@@ -29,11 +35,16 @@ export class SheetDataService {
   private readonly _loading = signal(false);
   private readonly _error = signal<string | null>(null);
   private readonly _isOffline = signal(!navigator.onLine);
+  private readonly _resolvingIds = signal<ReadonlySet<number>>(new Set());
+  private readonly _dynamicResolvingSlugs = signal<ReadonlySet<string>>(new Set());
+  private readonly dynamicLookupAttempts = new Set<string>();
 
   readonly items = this._items.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
   readonly isOffline = this._isOffline.asReadonly();
+  readonly resolvingIds = this._resolvingIds.asReadonly();
+  readonly dynamicResolvingSlugs = this._dynamicResolvingSlugs.asReadonly();
 
   constructor() {
     window.addEventListener('online', () => this._isOffline.set(false));
@@ -42,6 +53,7 @@ export class SheetDataService {
 
   loadData(forceRefresh = false): void {
     if (this._loading()) return;
+    if (forceRefresh) this.resetResolutionState();
 
     if (!forceRefresh) {
       if (this._items().length > 0) return;
@@ -72,20 +84,10 @@ export class SheetDataService {
       next: (text) => {
         try {
           const items = this.parseGvizResponse(text);
-          this.resolveFacebookShareItems(items).subscribe({
-            next: (resolvedItems) => {
-              this._items.set(resolvedItems);
-              this.saveToCache(resolvedItems);
-              if (forceRefresh) this.toast.show('Content refreshed');
-              this._loading.set(false);
-            },
-            error: () => {
-              this._items.set(items);
-              this.saveToCache(items);
-              if (forceRefresh) this.toast.show('Content refreshed');
-              this._loading.set(false);
-            },
-          });
+          this._items.set(items);
+          this.saveToCache(items);
+          if (forceRefresh) this.toast.show('Content refreshed');
+          this._loading.set(false);
         } catch {
           this._error.set('Failed to parse sheet data');
           this._loading.set(false);
@@ -125,26 +127,117 @@ export class SheetDataService {
     }
   }
 
-  private resolveFacebookShareItems(items: MediaItem[]): Observable<MediaItem[]> {
-    if (items.length === 0) return of([]);
-    return forkJoin(items.map((item) => this.resolveFacebookShareItem(item)));
+  ensureResolved(items: readonly MediaItem[]): void {
+    for (const item of items) {
+      this.ensureResolvedItem(item);
+    }
   }
 
-  private resolveFacebookShareItem(item: MediaItem): Observable<MediaItem> {
-    if (item.type !== 'facebook-share') return of(item);
+  ensureResolvedForDynamicSlug(slug: string): void {
+    if (!slug || this.dynamicLookupAttempts.has(slug)) return;
+    this.dynamicLookupAttempts.add(slug);
 
-    const source = item.resolvedUrl || item.url;
-    const existingId = extractFacebookVideoId(source);
+    const targets = this._items()
+      .filter((item) => this.needsRedirectResolution(item))
+      .slice(0, DYNAMIC_LOOKUP_LIMIT);
+    if (targets.length === 0) return;
+
+    this.addDynamicResolvingSlug(slug);
+    let remaining = targets.length;
+    const done = (): void => {
+      remaining -= 1;
+      if (remaining === 0) this.removeDynamicResolvingSlug(slug);
+    };
+
+    for (const item of targets) {
+      this.resolveAndStoreItem(item, done);
+    }
+  }
+
+  private resolveShareItem(item: MediaItem): Observable<MediaItem> {
+    if (item.type === 'facebook-share') {
+      return this.resolveRedirectShareItem(item, extractFacebookVideoId, buildFacebookVideoUrl);
+    }
+
+    if (item.type === 'tiktok-share') {
+      return this.resolveRedirectShareItem(item, extractTikTokVideoId, buildTikTokVideoUrl);
+    }
+
+    return of(item);
+  }
+
+  private ensureResolvedItem(item: MediaItem): void {
+    if (!this.needsRedirectResolution(item)) return;
+    this.resolveAndStoreItem(item);
+  }
+
+  private needsRedirectResolution(item: MediaItem): boolean {
+    if (item.resolvedUrl || this._resolvingIds().has(item.sNo)) return false;
+    return item.type === 'facebook-share' || item.type === 'tiktok-share';
+  }
+
+  private resolveAndStoreItem(item: MediaItem, onDone?: () => void): void {
+    const synchronous = this.resolveSynchronously(item);
+    if (synchronous) {
+      this.updateResolvedItem(synchronous);
+      onDone?.();
+      return;
+    }
+
+    this.addResolvingId(item.sNo);
+    this.resolveShareItem(item).subscribe({
+      next: (resolvedItem) => {
+        this.updateResolvedItem(resolvedItem);
+      },
+      error: () => {
+        this.removeResolvingId(item.sNo);
+        onDone?.();
+      },
+      complete: () => {
+        this.removeResolvingId(item.sNo);
+        onDone?.();
+      },
+    });
+  }
+
+  private resolveSynchronously(item: MediaItem): MediaItem | null {
+    if (item.type === 'facebook-share') {
+      const id = extractFacebookVideoId(item.url);
+      return id ? { ...item, resolvedUrl: buildFacebookVideoUrl(item.url) } : null;
+    }
+
+    if (item.type === 'tiktok-share') {
+      const id = extractTikTokVideoId(item.url);
+      return id ? { ...item, resolvedUrl: buildTikTokVideoUrl(item.url) } : null;
+    }
+
+    return null;
+  }
+
+  private updateResolvedItem(resolvedItem: MediaItem): void {
+    if (!resolvedItem.resolvedUrl) return;
+    this._items.update((items) =>
+      items.map((item) => (item.sNo === resolvedItem.sNo ? resolvedItem : item)),
+    );
+    this.saveToCache(this._items());
+  }
+
+  private resolveRedirectShareItem(
+    item: MediaItem,
+    extractId: (urlOrId: string) => string | null,
+    buildUrl: (urlOrId: string) => string,
+  ): Observable<MediaItem> {
+    const existingId = extractId(item.url);
     if (existingId) {
-      return of({ ...item, resolvedUrl: buildFacebookVideoUrl(existingId) });
+      return of({ ...item, resolvedUrl: buildUrl(item.url) });
     }
 
     const apiUrl = `https://api.microlink.io/?url=${encodeURIComponent(item.url)}`;
     return this.http.get<MicrolinkResolveResponse>(apiUrl).pipe(
       map((res) => {
         const resolvedUrl = res.status === 'success' ? (res.data?.url ?? '') : '';
-        const resolvedId = extractFacebookVideoId(resolvedUrl);
-        return resolvedId ? { ...item, resolvedUrl: buildFacebookVideoUrl(resolvedId) } : item;
+        const resolvedId = extractId(resolvedUrl);
+        return resolvedId ? { ...item, resolvedUrl: buildUrl(resolvedUrl) } : item;
       }),
       catchError(() => of(item)),
     );
@@ -171,7 +264,37 @@ export class SheetDataService {
         title: String(row.c[4]?.v ?? ''),
         desc: String(row.c[5]?.v ?? ''),
         startTime: row.c[6]?.v != null ? Number(row.c[6]!.v) : null,
-        resolvedUrl: String(row.c[7]?.v ?? ''),
+        resolvedUrl: '',
       }));
+  }
+
+  private addResolvingId(sNo: number): void {
+    this._resolvingIds.update((ids) => new Set(ids).add(sNo));
+  }
+
+  private removeResolvingId(sNo: number): void {
+    this._resolvingIds.update((ids) => {
+      const next = new Set(ids);
+      next.delete(sNo);
+      return next;
+    });
+  }
+
+  private addDynamicResolvingSlug(slug: string): void {
+    this._dynamicResolvingSlugs.update((slugs) => new Set(slugs).add(slug));
+  }
+
+  private removeDynamicResolvingSlug(slug: string): void {
+    this._dynamicResolvingSlugs.update((slugs) => {
+      const next = new Set(slugs);
+      next.delete(slug);
+      return next;
+    });
+  }
+
+  private resetResolutionState(): void {
+    this.dynamicLookupAttempts.clear();
+    this._resolvingIds.set(new Set());
+    this._dynamicResolvingSlugs.set(new Set());
   }
 }

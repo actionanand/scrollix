@@ -1,4 +1,11 @@
-import { Component, inject, computed, signal, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  inject,
+  computed,
+  effect,
+  signal,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SheetDataService } from '../../services/sheet-data.service';
 import { AuthService } from '../../services/auth.service';
@@ -15,6 +22,8 @@ const TYPE_LABELS: Record<string, string> = {
   facebook: 'Facebook',
   'facebook-reel': 'Facebook Reel',
   'facebook-share': 'Facebook Share',
+  tiktok: 'TikTok',
+  'tiktok-share': 'TikTok Share',
   dailymotion: 'Dailymotion',
   vimeo: 'Vimeo',
   'other-video': 'Other',
@@ -46,6 +55,7 @@ export class VideoListComponent {
   protected readonly currentPage = signal(1);
   protected readonly pullDistance = signal(0);
   protected readonly typeLabels = TYPE_LABELS;
+  protected readonly resolvingIds = this.sheetData.resolvingIds;
 
   private touchStartY = 0;
 
@@ -104,18 +114,37 @@ export class VideoListComponent {
     return this.searchedVideos().slice(start, start + this.pageSize);
   });
 
+  private readonly prefetchedVideos = computed(() => {
+    const start = this.currentPage() * this.pageSize;
+    return this.searchedVideos().slice(start, start + this.pageSize);
+  });
+
+  protected readonly processingCurrentPage = computed(() =>
+    this.paginatedVideos().some((video) => this.resolvingIds().has(video.sNo)),
+  );
+
   protected readonly isTallGrid = computed(() => {
     const type = this.selectedType();
     return (
       type === 'instagram' ||
       type === 'youtube-short' ||
       type === 'facebook-reel' ||
-      type === 'facebook-share'
+      type === 'facebook-share' ||
+      type === 'tiktok' ||
+      type === 'tiktok-share'
     );
   });
 
   constructor() {
     this.sheetData.loadData();
+    effect(() => {
+      const visible = this.paginatedVideos();
+      const prefetch = this.prefetchedVideos();
+      queueMicrotask(() => {
+        this.sheetData.ensureResolved(visible);
+        this.sheetData.ensureResolved(prefetch);
+      });
+    });
   }
 
   protected encodeId(video: MediaItem): string {
@@ -127,12 +156,20 @@ export class VideoListComponent {
       video.type === 'instagram' ||
       video.type === 'youtube-short' ||
       video.type === 'facebook-reel' ||
-      video.type === 'facebook-share'
+      video.type === 'facebook-share' ||
+      video.type === 'tiktok' ||
+      video.type === 'tiktok-share'
     );
   }
 
+  protected isProcessing(video: MediaItem): boolean {
+    return this.resolvingIds().has(video.sNo);
+  }
+
   private shareSource(video: MediaItem): string {
-    return video.type === 'facebook-share' && video.resolvedUrl ? video.resolvedUrl : video.url;
+    if (video.type === 'facebook-share' && video.resolvedUrl) return video.resolvedUrl;
+    if (video.type === 'tiktok-share' && video.resolvedUrl) return video.resolvedUrl;
+    return video.url;
   }
 
   protected onFilterChange(event: Event): void {

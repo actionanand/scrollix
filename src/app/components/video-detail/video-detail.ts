@@ -1,4 +1,11 @@
-import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  effect,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SheetDataService } from '../../services/sheet-data.service';
@@ -23,11 +30,10 @@ export class VideoDetailComponent {
 
   protected readonly loading = this.sheetData.loading;
   private readonly routeId = signal('');
+  private readonly decodedSlug = computed(() => decodeVideoId(this.routeId()));
 
   protected readonly item = computed(() => {
-    const id = this.routeId();
-    if (!id) return null;
-    const slug = decodeVideoId(id);
+    const slug = this.decodedSlug();
     if (!slug) return null;
     const found = this.sheetData
       .items()
@@ -43,11 +49,17 @@ export class VideoDetailComponent {
     return found;
   });
 
+  protected readonly resolvingDynamicItem = computed(() => {
+    const slug = this.decodedSlug();
+    return !!slug && !this.item() && this.sheetData.dynamicResolvingSlugs().has(slug);
+  });
+
   protected readonly shareUrl = computed(() => {
     const mediaItem = this.item();
     if (!mediaItem) return '';
     const source =
-      mediaItem.type === 'facebook-share' && mediaItem.resolvedUrl
+      (mediaItem.type === 'facebook-share' || mediaItem.type === 'tiktok-share') &&
+      mediaItem.resolvedUrl
         ? mediaItem.resolvedUrl
         : mediaItem.url;
     return buildVideoShareUrl(encodeVideoId(source));
@@ -59,6 +71,13 @@ export class VideoDetailComponent {
       this.routeId.set(params.get('id') ?? '');
     });
     this.sheetData.loadData();
+    effect(() => {
+      const slug = this.decodedSlug();
+      const loading = this.loading();
+      const item = this.item();
+      if (!slug || loading || item) return;
+      queueMicrotask(() => this.sheetData.ensureResolvedForDynamicSlug(slug));
+    });
   }
 
   protected async copyLink(): Promise<void> {
