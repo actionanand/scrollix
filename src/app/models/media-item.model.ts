@@ -7,8 +7,6 @@ export type MediaType =
   | 'facebook-share'
   | 'dailymotion'
   | 'vimeo'
-  | 'tiktok'
-  | 'tiktok-share'
   | 'other-video'
   | 'post';
 

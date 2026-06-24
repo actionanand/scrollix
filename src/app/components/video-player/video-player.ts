@@ -45,7 +45,6 @@ export class VideoPlayerComponent {
   protected readonly appFullscreen = signal(false);
   protected readonly miniPipUrl = signal<string | null>(null);
   private readonly resolvedFacebookVideoUrl = signal<string | null>(null);
-  private readonly resolvedTikTokUrl = signal<string | null>(null);
   private ignoreNextPopState = false;
 
   private readonly iframeRef = viewChild<ElementRef<HTMLIFrameElement>>('playerIframe');
@@ -68,8 +67,6 @@ export class VideoPlayerComponent {
       this.vertical() ||
       type === 'youtube-short' ||
       type === 'instagram' ||
-      type === 'tiktok' ||
-      type === 'tiktok-share' ||
       type === 'facebook-reel' ||
       type === 'facebook-share'
     );
@@ -90,14 +87,6 @@ export class VideoPlayerComponent {
     return this.resolvedFacebookVideoUrl() ?? buildFacebookVideoUrl(source);
   });
 
-  /** Resolved full TikTok URL for tiktok-share items (e.g. after following vt.tiktok.com redirect). */
-  private readonly tiktokShareUrl = computed(() => {
-    const item = this.item();
-    if (item.type !== 'tiktok-share') return item.url;
-    const fallback = item.resolvedUrl || item.url;
-    return this.resolvedTikTokUrl() ?? fallback;
-  });
-
   protected readonly ytPlayerId = computed(() => `yt-player-${this.item().sNo}`);
 
   protected readonly embedUrl = computed(() => {
@@ -111,7 +100,6 @@ export class VideoPlayerComponent {
   constructor() {
     afterNextRender(() => {
       void this.resolveFacebookShareRedirect();
-      void this.resolveTikTokShareRedirect();
       if (!this.isYoutube()) return;
       this.ytService.load().then(() => {
         const item = this.item();
@@ -324,32 +312,6 @@ export class VideoPlayerComponent {
     }
   }
 
-  private async resolveTikTokShareRedirect(): Promise<void> {
-    const item = this.item();
-    if (item.type !== 'tiktok-share') return;
-    // Skip fetch if the video ID is already available via resolvedUrl or the URL itself.
-    if (
-      (item.resolvedUrl && this.extractTikTokId(item.resolvedUrl)) ||
-      this.extractTikTokId(item.url)
-    ) {
-      return;
-    }
-
-    try {
-      const response = await fetch(item.url, {
-        redirect: 'follow',
-        mode: 'no-cors',
-        credentials: 'omit',
-      });
-      if (response.url) {
-        this.resolvedTikTokUrl.set(response.url);
-        this.cdr.markForCheck();
-      }
-    } catch {
-      // no-cors may not expose the redirected URL in all browsers.
-    }
-  }
-
   private buildEmbedUrl(item: MediaItem, muted: boolean): string {
     const muteVal = muted ? 1 : 0;
 
@@ -391,16 +353,6 @@ export class VideoPlayerComponent {
         return `https://player.vimeo.com/video/${item.url}?${p.toString()}`;
       }
 
-      case 'tiktok': {
-        const id = this.extractTikTokId(item.url) ?? '';
-        return id ? `https://www.tiktok.com/embed/v2/${id}` : '';
-      }
-
-      case 'tiktok-share': {
-        const id = this.extractTikTokId(this.tiktokShareUrl()) ?? '';
-        return id ? `https://www.tiktok.com/embed/v2/${id}` : '';
-      }
-
       case 'other-video':
       default:
         return item.url;
@@ -424,10 +376,6 @@ export class VideoPlayerComponent {
         return `https://www.dailymotion.com/video/${item.url}`;
       case 'vimeo':
         return `https://vimeo.com/${item.url}`;
-      case 'tiktok':
-        return item.url;
-      case 'tiktok-share':
-        return this.tiktokShareUrl();
       case 'other-video':
       default:
         return item.url;
@@ -455,13 +403,7 @@ export class VideoPlayerComponent {
   }
 
   private shareSource(item: MediaItem): string {
-    if (item.type === 'facebook-share' && item.resolvedUrl) return item.resolvedUrl;
-    if (item.type === 'tiktok-share') return this.tiktokShareUrl();
-    return item.url;
-  }
-
-  private extractTikTokId(url: string): string | null {
-    return url.match(/\/video\/(\d+)/)?.[1] ?? null;
+    return item.type === 'facebook-share' && item.resolvedUrl ? item.resolvedUrl : item.url;
   }
 
   private formatStartTime(seconds: number | null): string {
