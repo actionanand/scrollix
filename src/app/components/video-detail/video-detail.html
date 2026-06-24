@@ -6,10 +6,10 @@
     }
   </div>
 
-  @if (loading()) {
+  @if (loading() || resolvingDynamicItem()) {
     <div class="loading" role="status">
       <div class="spinner" aria-hidden="true"></div>
-      <span>Loading...</span>
+      <span>{{ loading() ? 'Loading...' : 'Resolving video link...' }}</span>
     </div>
   } @else if (item(); as video) {
     <div class="detail-content">

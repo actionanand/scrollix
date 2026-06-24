@@ -46,10 +46,24 @@
   <div class="offline-banner" role="status">📡 You are offline</div>
 }
 
+@if (processingCurrentPage()) {
+  <div class="processing-banner" role="status">
+    <div class="spinner spinner--small" aria-hidden="true"></div>
+    <span>Preparing video links...</span>
+  </div>
+}
+
 <div class="video-grid" [class.vertical-grid]="isTallGrid()">
   @for (video of paginatedVideos(); track video.sNo) {
     <div class="video-cell">
-      <app-video-player [item]="video" [vertical]="isVerticalVideo(video)" />
+      @if (isProcessing(video)) {
+        <div class="video-processing" role="status">
+          <div class="spinner" aria-hidden="true"></div>
+          <span>Resolving video link...</span>
+        </div>
+      } @else {
+        <app-video-player [item]="video" [vertical]="isVerticalVideo(video)" />
+      }
       <a
         class="detail-link"
         [routerLink]="'/video/' + encodeId(video)"
