@@ -12,7 +12,6 @@ import { SheetDataService } from '../../services/sheet-data.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { VideoPlayerComponent } from '../video-player/video-player';
-import { decodeVideoId, encodeVideoId, extractShareSlug } from '../../utils/video-id';
 import { buildVideoShareUrl } from '../../utils/share-url';
 
 @Component({
@@ -30,19 +29,11 @@ export class VideoDetailComponent {
 
   protected readonly loading = this.sheetData.loading;
   private readonly routeId = signal('');
-  private readonly decodedSlug = computed(() => decodeVideoId(this.routeId()));
 
   protected readonly item = computed(() => {
-    const slug = this.decodedSlug();
-    if (!slug) return null;
-    const found = this.sheetData
-      .items()
-      .find(
-        (i) =>
-          i.url === slug ||
-          extractShareSlug(i.url) === slug ||
-          (i.resolvedUrl ? extractShareSlug(i.resolvedUrl) === slug : false),
-      );
+    const hash = this.routeId();
+    if (!hash) return null;
+    const found = this.sheetData.items().find((i) => i.hash === hash);
     if (!found) return null;
     if (found.isProtected && !this.auth.isLoggedIn()) return null;
     if (found.type === 'post') return null;
@@ -50,19 +41,14 @@ export class VideoDetailComponent {
   });
 
   protected readonly resolvingDynamicItem = computed(() => {
-    const slug = this.decodedSlug();
-    return !!slug && !this.item() && this.sheetData.dynamicResolvingSlugs().has(slug);
+    const mediaItem = this.item();
+    return !!mediaItem && this.sheetData.resolvingIds().has(mediaItem.sNo);
   });
 
   protected readonly shareUrl = computed(() => {
     const mediaItem = this.item();
     if (!mediaItem) return '';
-    const source =
-      (mediaItem.type === 'facebook-share' || mediaItem.type === 'tiktok-share') &&
-      mediaItem.resolvedUrl
-        ? mediaItem.resolvedUrl
-        : mediaItem.url;
-    return buildVideoShareUrl(encodeVideoId(source));
+    return buildVideoShareUrl(mediaItem.hash);
   });
 
   constructor() {
@@ -72,11 +58,10 @@ export class VideoDetailComponent {
     });
     this.sheetData.loadData();
     effect(() => {
-      const slug = this.decodedSlug();
       const loading = this.loading();
       const item = this.item();
-      if (!slug || loading || item) return;
-      queueMicrotask(() => this.sheetData.ensureResolvedForDynamicSlug(slug));
+      if (loading || !item) return;
+      queueMicrotask(() => this.sheetData.ensureResolved([item]));
     });
   }
 

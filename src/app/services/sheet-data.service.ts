@@ -13,7 +13,6 @@ import {
 
 const CACHE_KEY = 'scrollix_sheet_data';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const DYNAMIC_LOOKUP_LIMIT = 12;
 
 interface CacheEntry {
   timestamp: number;
@@ -36,15 +35,12 @@ export class SheetDataService {
   private readonly _error = signal<string | null>(null);
   private readonly _isOffline = signal(!navigator.onLine);
   private readonly _resolvingIds = signal<ReadonlySet<number>>(new Set());
-  private readonly _dynamicResolvingSlugs = signal<ReadonlySet<string>>(new Set());
-  private readonly dynamicLookupAttempts = new Set<string>();
 
   readonly items = this._items.asReadonly();
   readonly loading = this._loading.asReadonly();
   readonly error = this._error.asReadonly();
   readonly isOffline = this._isOffline.asReadonly();
   readonly resolvingIds = this._resolvingIds.asReadonly();
-  readonly dynamicResolvingSlugs = this._dynamicResolvingSlugs.asReadonly();
 
   constructor() {
     window.addEventListener('online', () => this._isOffline.set(false));
@@ -112,6 +108,9 @@ export class SheetDataService {
       if (!raw) return null;
       const entry = JSON.parse(raw) as CacheEntry;
       if (!ignoreTTL && Date.now() - entry.timestamp > CACHE_TTL) return null;
+      if (!entry.items.every((item) => typeof item.hash === 'string' && item.hash.length > 0)) {
+        return null;
+      }
       return entry.items;
     } catch {
       return null;
@@ -130,27 +129,6 @@ export class SheetDataService {
   ensureResolved(items: readonly MediaItem[]): void {
     for (const item of items) {
       this.ensureResolvedItem(item);
-    }
-  }
-
-  ensureResolvedForDynamicSlug(slug: string): void {
-    if (!slug || this.dynamicLookupAttempts.has(slug)) return;
-    this.dynamicLookupAttempts.add(slug);
-
-    const targets = this._items()
-      .filter((item) => this.needsRedirectResolution(item))
-      .slice(0, DYNAMIC_LOOKUP_LIMIT);
-    if (targets.length === 0) return;
-
-    this.addDynamicResolvingSlug(slug);
-    let remaining = targets.length;
-    const done = (): void => {
-      remaining -= 1;
-      if (remaining === 0) this.removeDynamicResolvingSlug(slug);
-    };
-
-    for (const item of targets) {
-      this.resolveAndStoreItem(item, done);
     }
   }
 
@@ -264,6 +242,7 @@ export class SheetDataService {
         title: String(row.c[4]?.v ?? ''),
         desc: String(row.c[5]?.v ?? ''),
         startTime: row.c[6]?.v != null ? Number(row.c[6]!.v) : null,
+        hash: String(row.c[7]?.v ?? ''),
         resolvedUrl: '',
       }));
   }
@@ -280,21 +259,7 @@ export class SheetDataService {
     });
   }
 
-  private addDynamicResolvingSlug(slug: string): void {
-    this._dynamicResolvingSlugs.update((slugs) => new Set(slugs).add(slug));
-  }
-
-  private removeDynamicResolvingSlug(slug: string): void {
-    this._dynamicResolvingSlugs.update((slugs) => {
-      const next = new Set(slugs);
-      next.delete(slug);
-      return next;
-    });
-  }
-
   private resetResolutionState(): void {
-    this.dynamicLookupAttempts.clear();
     this._resolvingIds.set(new Set());
-    this._dynamicResolvingSlugs.set(new Set());
   }
 }

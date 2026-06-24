@@ -20,6 +20,7 @@ export interface MediaItem {
   title: string;
   desc: string;
   startTime: number | null;
+  hash: string;
   resolvedUrl: string;
 }
 

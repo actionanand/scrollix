@@ -16,7 +16,6 @@ import {
   buildFacebookVideoUrl,
   buildTikTokEmbedUrl,
   buildTikTokVideoUrl,
-  encodeVideoId,
   extractFacebookVideoId,
   extractTikTokVideoId,
 } from '../../utils/video-id';
@@ -196,8 +195,7 @@ export class VideoPlayerComponent {
   }
 
   protected async copyLink(): Promise<void> {
-    const id = encodeVideoId(this.shareSource(this.item()));
-    const url = buildVideoShareUrl(id);
+    const url = buildVideoShareUrl(this.item().hash);
     try {
       await navigator.clipboard.writeText(url);
       this.toast.show('Link copied');
@@ -375,7 +373,10 @@ export class VideoPlayerComponent {
 
       case 'tiktok':
       case 'tiktok-share':
-        return buildTikTokEmbedUrl(item.type === 'tiktok-share' ? this.tiktokVideoUrl() : item.url);
+        return buildTikTokEmbedUrl(
+          item.type === 'tiktok-share' ? this.tiktokVideoUrl() : item.url,
+          muted,
+        );
 
       case 'dailymotion': {
         const p = new URLSearchParams({
@@ -448,12 +449,6 @@ export class VideoPlayerComponent {
     const currentTime = this.ytPlayer?.getCurrentTime?.();
     if (currentTime == null || !Number.isFinite(currentTime) || currentTime <= 0) return null;
     return Math.floor(currentTime);
-  }
-
-  private shareSource(item: MediaItem): string {
-    if (item.type === 'facebook-share' && item.resolvedUrl) return item.resolvedUrl;
-    if (item.type === 'tiktok-share' && item.resolvedUrl) return item.resolvedUrl;
-    return item.url;
   }
 
   private formatStartTime(seconds: number | null): string {
