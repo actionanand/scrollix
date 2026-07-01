@@ -72,6 +72,8 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @CapacitorPlugin(name = "ScrollixBrowser")
 public class ScrollixBrowserPlugin extends Plugin {
@@ -147,12 +149,46 @@ public class ScrollixBrowserPlugin extends Plugin {
     }).start();
   }
 
+  @PluginMethod
+  public void fetchPreview(PluginCall call) {
+    String url = call.getString("url");
+    if (url == null || url.trim().isEmpty()) {
+      call.reject("A URL is required.");
+      return;
+    }
+
+    new Thread(() -> {
+      try {
+        String html = downloadHtml(url);
+        JSObject result = extractPreview(html, url);
+        getActivity().runOnUiThread(() -> call.resolve(result));
+      } catch (Exception ex) {
+        getActivity().runOnUiThread(() -> call.reject("Unable to fetch link preview."));
+      }
+    }).start();
+  }
+
   private String downloadHtml(String rawUrl) throws Exception {
+    return downloadHtml(rawUrl, 0);
+  }
+
+  private String downloadHtml(String rawUrl, int redirects) throws Exception {
     HttpURLConnection connection = (HttpURLConnection) new URL(rawUrl).openConnection();
     connection.setInstanceFollowRedirects(true);
     connection.setConnectTimeout(15000);
     connection.setReadTimeout(20000);
-    connection.setRequestProperty("User-Agent", "Mozilla/5.0 Scrollix Android");
+    connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36 Scrollix");
+    connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+    connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
+
+    int status = connection.getResponseCode();
+    if (status >= 300 && status < 400 && redirects < 5) {
+      String location = connection.getHeaderField("Location");
+      connection.disconnect();
+      if (location != null && !location.trim().isEmpty()) {
+        return downloadHtml(new URL(new URL(rawUrl), location).toString(), redirects + 1);
+      }
+    }
 
     try (InputStream input = connection.getInputStream();
          BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8))) {
@@ -165,6 +201,114 @@ public class ScrollixBrowserPlugin extends Plugin {
     } finally {
       connection.disconnect();
     }
+  }
+
+  private JSObject extractPreview(String html, String sourceUrl) {
+    String title = firstNonEmpty(
+      metaContent(html, "property", "og:title"),
+      metaContent(html, "name", "twitter:title"),
+      titleTag(html)
+    );
+    String description = firstNonEmpty(
+      metaContent(html, "property", "og:description"),
+      metaContent(html, "name", "description"),
+      metaContent(html, "name", "twitter:description")
+    );
+    String image = firstNonEmpty(
+      metaContent(html, "property", "og:image"),
+      metaContent(html, "property", "og:image:url"),
+      metaContent(html, "name", "twitter:image"),
+      metaContent(html, "name", "thumbnail")
+    );
+    String previewUrl = firstNonEmpty(metaContent(html, "property", "og:url"), sourceUrl);
+    String logo = firstNonEmpty(
+      metaContent(html, "property", "og:logo"),
+      linkHref(html, "apple-touch-icon"),
+      linkHref(html, "icon")
+    );
+
+    JSObject result = new JSObject();
+    result.put("title", cleanText(title));
+    result.put("description", cleanText(description));
+    result.put("image", absoluteUrl(sourceUrl, cleanText(image)));
+    result.put("url", absoluteUrl(sourceUrl, cleanText(previewUrl)));
+    result.put("logo", absoluteUrl(sourceUrl, cleanText(logo)));
+    return result;
+  }
+
+  private String metaContent(String html, String keyAttribute, String keyValue) {
+    Matcher matcher = Pattern.compile("<meta\\\\b[^>]*>", Pattern.CASE_INSENSITIVE).matcher(html);
+    while (matcher.find()) {
+      String tag = matcher.group();
+      String candidate = attribute(tag, keyAttribute);
+      if (candidate.equalsIgnoreCase(keyValue)) {
+        return attribute(tag, "content");
+      }
+    }
+    return "";
+  }
+
+  private String linkHref(String html, String relValue) {
+    Matcher matcher = Pattern.compile("<link\\\\b[^>]*>", Pattern.CASE_INSENSITIVE).matcher(html);
+    while (matcher.find()) {
+      String tag = matcher.group();
+      String rel = attribute(tag, "rel").toLowerCase();
+      if (rel.equals(relValue) || rel.contains(" " + relValue) || rel.contains(relValue + " ")) {
+        return attribute(tag, "href");
+      }
+    }
+    return "";
+  }
+
+  private String attribute(String tag, String name) {
+    String quoted = "\\\\b" + Pattern.quote(name) + "\\\\s*=\\\\s*([\\\\\\\"'])(.*?)\\\\1";
+    Matcher quotedMatcher = Pattern.compile(quoted, Pattern.CASE_INSENSITIVE | Pattern.DOTALL).matcher(tag);
+    if (quotedMatcher.find()) return htmlDecode(quotedMatcher.group(2));
+
+    String unquoted = "\\\\b" + Pattern.quote(name) + "\\\\s*=\\\\s*([^\\\\s>]+)";
+    Matcher unquotedMatcher = Pattern.compile(unquoted, Pattern.CASE_INSENSITIVE | Pattern.DOTALL).matcher(tag);
+    return unquotedMatcher.find() ? htmlDecode(unquotedMatcher.group(1)) : "";
+  }
+
+  private String titleTag(String html) {
+    Matcher matcher = Pattern
+      .compile("<title\\\\b[^>]*>(.*?)</title>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
+      .matcher(html);
+    return matcher.find() ? htmlDecode(matcher.group(1).replaceAll("<[^>]+>", "")) : "";
+  }
+
+  private String firstNonEmpty(String... values) {
+    for (String value : values) {
+      if (value != null && !value.trim().isEmpty()) return value;
+    }
+    return "";
+  }
+
+  private String cleanText(String value) {
+    return htmlDecode(value == null ? "" : value).replaceAll("\\\\s+", " ").trim();
+  }
+
+  private String absoluteUrl(String baseUrl, String value) {
+    if (value == null || value.trim().isEmpty()) return "";
+    try {
+      return new URL(new URL(baseUrl), value).toString();
+    } catch (Exception ignored) {
+      return value;
+    }
+  }
+
+  private String htmlDecode(String value) {
+    if (value == null) return "";
+    String quote = String.valueOf((char) 34);
+    return value
+      .replace("&amp;", "&")
+      .replace("&quot;", quote)
+      .replace("&#34;", quote)
+      .replace("&#39;", "'")
+      .replace("&apos;", "'")
+      .replace("&lt;", "<")
+      .replace("&gt;", ">")
+      .trim();
   }
 }
 `,
