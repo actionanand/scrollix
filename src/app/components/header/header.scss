@@ -2,6 +2,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+  min-width: 0;
   padding: calc(0.85rem + env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) 0.85rem
     max(1rem, env(safe-area-inset-left));
   background:
@@ -10,19 +12,25 @@
   color: #fff;
   flex-wrap: wrap;
   gap: 0.5rem;
+  overflow: hidden;
   box-shadow: 0 12px 28px rgba(31, 58, 168, 0.24);
 }
 
 .app-title {
+  min-width: 0;
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: 0;
 }
 
 .auth-section {
+  flex: 0 1 auto;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .auth-badge {
@@ -41,8 +49,12 @@
 }
 
 .welcome {
+  min-width: 0;
   font-size: 0.85rem;
   opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .btn {
@@ -55,6 +67,7 @@
   border-radius: 999px;
   font-size: 0.85rem;
   font-weight: 700;
+  flex: 0 0 auto;
   cursor: pointer;
   box-shadow: 0 3px 10px rgba(10, 18, 32, 0.14);
   transition:
@@ -91,19 +104,22 @@
 
 @media (max-width: 640px) {
   .app-header {
-    align-items: flex-start;
+    align-items: center;
+    flex-wrap: nowrap;
     padding-bottom: 1rem;
   }
 
   .app-title {
+    flex: 0 1 auto;
     font-size: 1.15rem;
     line-height: 1.2;
   }
 
+  .auth-section {
+    margin-left: auto;
+  }
+
   .welcome {
-    max-width: 44vw;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    max-width: 34vw;
   }
 }

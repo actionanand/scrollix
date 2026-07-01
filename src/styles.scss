@@ -24,15 +24,18 @@ html {
   line-height: 1.5;
   color: var(--app-text);
   background: linear-gradient(180deg, var(--app-bg-strong) 0, var(--app-bg) 220px), var(--app-bg);
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 body {
+  width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
   background: transparent;
+  overflow-x: hidden;
   overscroll-behavior-y: contain;
 }
 

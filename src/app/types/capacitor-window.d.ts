@@ -13,6 +13,15 @@ interface ScrollixBrowserPlugin {
   }): Promise<void>;
   openExternal(options: { url: string }): Promise<void>;
   fetchHtml(options: { url: string }): Promise<{ html: string }>;
+  fetchPreview(options: { url: string }): Promise<ScrollixLinkPreview>;
+}
+
+interface ScrollixLinkPreview {
+  title: string;
+  description: string;
+  image: string;
+  url: string;
+  logo: string;
 }
 
 interface Window {
