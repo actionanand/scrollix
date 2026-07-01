@@ -14,6 +14,7 @@ interface ScrollixBrowserPlugin {
   openExternal(options: { url: string }): Promise<void>;
   fetchHtml(options: { url: string }): Promise<{ html: string }>;
   fetchPreview(options: { url: string }): Promise<ScrollixLinkPreview>;
+  consumeAppLink(): Promise<{ url: string }>;
 }
 
 interface ScrollixLinkPreview {
