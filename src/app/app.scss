@@ -15,7 +15,7 @@
   background: rgba(255, 255, 255, 0.92);
   border-bottom: 1px solid var(--app-border);
   position: sticky;
-  top: 0;
+  top: var(--app-header-height);
   z-index: 10;
   padding: 0.25rem max(0.75rem, env(safe-area-inset-right)) 0.25rem
     max(0.75rem, env(safe-area-inset-left));

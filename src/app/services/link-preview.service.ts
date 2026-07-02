@@ -36,24 +36,24 @@ export class LinkPreviewService {
     if (this.isAndroidApp()) {
       return this.fetchAndroidNative(url).pipe(
         map((result) => {
-          const preview = result ?? this.createFallback(url);
+          const preview = result ?? this.createFallback(url, this.isFacebookSharePostUrl(url));
           this.cache.set(url, preview);
           this.saveCachedPreview(url, preview);
           return preview;
         }),
-        catchError(() => of(this.createFallback(url))),
+        catchError(() => of(this.createFallback(url, this.isFacebookSharePostUrl(url)))),
       );
     }
 
     return this.fetchOgDirect(url).pipe(
       switchMap((result) => (result ? of(result) : this.fetchMicrolink(url))),
       map((result) => {
-        const preview = result ?? this.createFallback(url);
+        const preview = result ?? this.createFallback(url, this.isFacebookSharePostUrl(url));
         this.cache.set(url, preview);
         this.saveCachedPreview(url, preview);
         return preview;
       }),
-      catchError(() => of(this.createFallback(url))),
+      catchError(() => of(this.createFallback(url, this.isFacebookSharePostUrl(url)))),
     );
   }
 
@@ -179,7 +179,17 @@ export class LinkPreviewService {
     return Object.fromEntries(entries);
   }
 
-  private createFallback(url: string): LinkPreview {
+  private createFallback(url: string, facebookSharePost = false): LinkPreview {
+    if (facebookSharePost) {
+      return {
+        title: 'Facebook shared post',
+        description: 'Preview is unavailable. Open the post to view it on Facebook.',
+        image: '',
+        url,
+        logo: '',
+      };
+    }
+
     let domain = url;
     try {
       domain = new URL(url).hostname;
