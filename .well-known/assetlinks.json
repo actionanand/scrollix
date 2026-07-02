@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.actionanand.scrollix.app",
+      "sha256_cert_fingerprints": [
+        "AF:FF:90:66:4E:FE:53:CA:CB:3A:22:8E:AD:8F:43:56:F3:57:31:2C:3B:41:4C:5E:F9:48:03:17:FE:18:76:F9"
+      ]
+    }
+  }
+]
