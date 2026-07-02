@@ -57,8 +57,6 @@ export class VideoPlayerComponent {
   private readonly resolvedTikTokVideoUrl = signal<string | null>(null);
   private ignoreNextPopState = false;
   private interactionTimer: ReturnType<typeof setTimeout> | undefined;
-  private shieldTouchY: number | null = null;
-  private shieldTouchMoved = false;
 
   private readonly iframeRef = viewChild<ElementRef<HTMLIFrameElement>>('playerIframe');
   private ytPlayer: YtPlayer | undefined;
@@ -287,7 +285,6 @@ export class VideoPlayerComponent {
   }
 
   protected activatePlayerInteraction(): void {
-    if (this.shieldTouchMoved) return;
     this.playerInteractionActive.set(true);
     if (this.interactionTimer) clearTimeout(this.interactionTimer);
     this.interactionTimer = setTimeout(() => this.playerInteractionActive.set(false), 8000);
@@ -304,34 +301,6 @@ export class VideoPlayerComponent {
   protected scrollPageFromWheel(event: WheelEvent): void {
     if (this.appFullscreen() || this.playerInteractionActive()) return;
     if (this.scrollDocumentBy(event.deltaY) && event.cancelable) event.preventDefault();
-  }
-
-  protected startShieldTouch(event: TouchEvent): void {
-    this.shieldTouchY = event.touches[0]?.clientY ?? null;
-    this.shieldTouchMoved = false;
-  }
-
-  protected scrollPageFromShieldTouch(event: TouchEvent): void {
-    if (this.shieldTouchY == null) return;
-    const nextY = event.touches[0]?.clientY;
-    if (nextY == null) return;
-
-    const delta = this.shieldTouchY - nextY;
-    this.shieldTouchY = nextY;
-    if (Math.abs(delta) < 1) return;
-
-    if (Math.abs(delta) > 4) this.shieldTouchMoved = true;
-    if (this.scrollDocumentBy(delta) && event.cancelable) event.preventDefault();
-  }
-
-  protected endShieldTouch(): void {
-    const moved = this.shieldTouchMoved;
-    this.shieldTouchY = null;
-    if (moved) {
-      setTimeout(() => {
-        this.shieldTouchMoved = false;
-      }, 0);
-    }
   }
 
   private openMiniPip(src: string): void {

@@ -167,6 +167,7 @@ public class ScrollixBrowserPlugin extends Plugin {
     new Thread(() -> {
       try {
         DownloadedHtml page = downloadHtml(url);
+        page = resolvePreviewPage(page, url);
         JSObject result = extractPreview(page.html, page.finalUrl);
         getActivity().runOnUiThread(() -> call.resolve(result));
       } catch (Exception ex) {
@@ -220,6 +221,56 @@ public class ScrollixBrowserPlugin extends Plugin {
     }
   }
 
+  private DownloadedHtml resolvePreviewPage(DownloadedHtml page, String originalUrl) {
+    if (!isFacebookSharePostUrl(originalUrl) || hasUsefulPreview(page.html)) return page;
+
+    DownloadedHtml best = page;
+    String target = firstNonEmpty(
+      metaContent(page.html, "property", "og:url"),
+      linkHref(page.html, "canonical"),
+      metaRefreshUrl(page.html),
+      facebookContentUrl(page.html)
+    );
+
+    best = tryPreviewTarget(best, target);
+    if (hasUsefulPreview(best.html)) return best;
+
+    String shareCode = facebookShareCode(originalUrl);
+    if (!shareCode.isEmpty()) {
+      String[] candidates = new String[] {
+        "https://m.facebook.com/share/p/" + shareCode + "/",
+        "https://mbasic.facebook.com/share/p/" + shareCode + "/",
+        "https://www.facebook.com/share/p/" + shareCode + "/?mibextid=wwXIfr"
+      };
+      for (String candidate : candidates) {
+        best = tryPreviewTarget(best, candidate);
+        if (hasUsefulPreview(best.html)) return best;
+      }
+    }
+
+    return best;
+  }
+
+  private DownloadedHtml tryPreviewTarget(DownloadedHtml fallback, String target) {
+    if (target == null || target.trim().isEmpty()) return fallback;
+    String resolvedTarget = absoluteUrl(fallback.finalUrl, target.trim());
+    if (resolvedTarget.equals(fallback.finalUrl)) return fallback;
+
+    try {
+      return downloadHtml(resolvedTarget);
+    } catch (Exception ignored) {
+      return fallback;
+    }
+  }
+
+  private boolean hasUsefulPreview(String html) {
+    return !firstNonEmpty(
+      metaContent(html, "property", "og:image"),
+      metaContent(html, "property", "og:image:url"),
+      metaContent(html, "name", "twitter:image")
+    ).isEmpty();
+  }
+
   private JSObject extractPreview(String html, String sourceUrl) {
     String title = firstNonEmpty(
       metaContent(html, "property", "og:title"),
@@ -235,9 +286,14 @@ public class ScrollixBrowserPlugin extends Plugin {
       metaContent(html, "property", "og:image"),
       metaContent(html, "property", "og:image:url"),
       metaContent(html, "name", "twitter:image"),
-      metaContent(html, "name", "thumbnail")
+      metaContent(html, "name", "thumbnail"),
+      firstImageSrc(html)
     );
-    String previewUrl = firstNonEmpty(metaContent(html, "property", "og:url"), sourceUrl);
+    String previewUrl = firstNonEmpty(
+      metaContent(html, "property", "og:url"),
+      linkHref(html, "canonical"),
+      sourceUrl
+    );
     String logo = firstNonEmpty(
       metaContent(html, "property", "og:logo"),
       linkHref(html, "apple-touch-icon"),
@@ -251,6 +307,87 @@ public class ScrollixBrowserPlugin extends Plugin {
     result.put("url", absoluteUrl(sourceUrl, cleanText(previewUrl)));
     result.put("logo", absoluteUrl(sourceUrl, cleanText(logo)));
     return result;
+  }
+
+  private boolean isFacebookSharePostUrl(String rawUrl) {
+    try {
+      URL url = new URL(rawUrl);
+      String host = url.getHost();
+      String path = url.getPath();
+      return host != null &&
+        host.toLowerCase().endsWith("facebook.com") &&
+        path != null &&
+        path.contains("/share/p/");
+    } catch (Exception ignored) {
+      return false;
+    }
+  }
+
+  private String facebookShareCode(String rawUrl) {
+    try {
+      String[] segments = new URL(rawUrl).getPath().split("/");
+      for (int index = 0; index < segments.length - 2; index++) {
+        if (segments[index].equals("share") && segments[index + 1].equals("p")) {
+          return segments[index + 2];
+        }
+      }
+    } catch (Exception ignored) {
+      // Fall through to empty.
+    }
+    return "";
+  }
+
+  private String metaRefreshUrl(String html) {
+    Matcher matcher = Pattern.compile("<meta\\\\b[^>]*>", Pattern.CASE_INSENSITIVE).matcher(html);
+    while (matcher.find()) {
+      String tag = matcher.group();
+      if (!attribute(tag, "http-equiv").equalsIgnoreCase("refresh")) continue;
+      String content = attribute(tag, "content");
+      Matcher urlMatcher = Pattern.compile("url\\\\s*=\\\\s*([^;]+)", Pattern.CASE_INSENSITIVE).matcher(content);
+      if (urlMatcher.find()) return urlMatcher.group(1).trim();
+    }
+    return "";
+  }
+
+  private String facebookContentUrl(String html) {
+    String normalized = htmlDecode(html).replace("\\\\/", "/");
+    Matcher matcher = Pattern
+      .compile("https?://(?:www\\\\.|m\\\\.)facebook\\\\.com/[^\\\\s<>]+", Pattern.CASE_INSENSITIVE)
+      .matcher(normalized);
+    while (matcher.find()) {
+      String candidate = matcher.group();
+      if (isLikelyFacebookContentUrl(candidate)) return candidate;
+    }
+    return "";
+  }
+
+  private boolean isLikelyFacebookContentUrl(String url) {
+    String lower = url.toLowerCase();
+    if (lower.contains("/share/p/") || lower.contains("/login") || lower.contains("/help")) return false;
+    return lower.contains("/posts/") ||
+      lower.contains("/permalink.php") ||
+      lower.contains("/story.php") ||
+      lower.contains("/photo.php") ||
+      lower.contains("/photos/") ||
+      lower.contains("/groups/");
+  }
+
+  private String firstImageSrc(String html) {
+    Matcher matcher = Pattern.compile("<img\\\\b[^>]*>", Pattern.CASE_INSENSITIVE).matcher(html);
+    while (matcher.find()) {
+      String src = attribute(matcher.group(), "src");
+      if (isUsefulImage(src)) return src;
+    }
+    return "";
+  }
+
+  private boolean isUsefulImage(String src) {
+    if (src == null || src.trim().isEmpty()) return false;
+    String lower = src.toLowerCase();
+    return !lower.startsWith("data:") &&
+      !lower.contains("emoji") &&
+      !lower.contains("static.xx.fbcdn.net/rsrc.php") &&
+      (lower.contains("fbcdn.net") || lower.startsWith("http"));
   }
 
   private String metaContent(String html, String keyAttribute, String keyValue) {
