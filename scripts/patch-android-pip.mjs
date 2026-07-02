@@ -624,6 +624,21 @@ if (!/android:pathPrefix="\/scrollix\/video\/"/.test(manifest)) {
         $3`,
   );
 }
+if (!/android:scheme="scrollix"/.test(manifest)) {
+  manifest = manifest.replace(
+    /(<activity[\s\S]*?android:name="\.MainActivity"[\s\S]*?>)([\s\S]*?)(<\/activity>)/,
+    `$1$2
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="scrollix"
+                    android:host="video" />
+            </intent-filter>
+        $3`,
+  );
+}
 if (!/android:name="\.ScrollixPostActivity"/.test(manifest)) {
   manifest = manifest.replace(
     /<\/application>/,

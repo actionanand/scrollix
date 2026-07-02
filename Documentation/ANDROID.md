@@ -49,8 +49,15 @@ Scrollix handles shared video links in the installed Android app:
 https://actionanand.github.io/scrollix/video/{Hash}
 ```
 
-The Android intent filter is path-scoped to `/scrollix/video/`, so other GitHub Pages apps such as
-`/arbloz` are not matched by Scrollix.
+Scrollix also supports a custom Android scheme:
+
+```text
+scrollix://video/{Hash}
+```
+
+The HTTPS Android intent filter is path-scoped to `/scrollix/video/`, so other GitHub Pages apps
+such as `/arbloz` are not matched by Scrollix. The `scrollix://video/{Hash}` custom scheme does not
+need a root `.well-known` file.
 
 For verified one-tap opening, Android also requires a Digital Asset Links file at the domain root:
 
@@ -76,6 +83,11 @@ package name and release signing certificate SHA-256 fingerprint:
 
 Without this root file, Android may show an app chooser or keep opening the browser. With it, matching
 `/scrollix/video/...` links open Scrollix directly when the app is installed.
+
+Copy buttons expose both share formats:
+
+- Web link from `PUBLIC_BASE_URL`: `https://actionanand.github.io/scrollix/video/{Hash}`
+- Android link from `ANDROID_PUBLIC_BASE_URL`: `scrollix://video/{Hash}`
 
 ---
 

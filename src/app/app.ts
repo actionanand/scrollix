@@ -14,6 +14,8 @@ import { AuthService } from './services/auth.service';
 const APP_LINK_HOST = 'actionanand.github.io';
 const APP_LINK_BASE_PATH = '/scrollix';
 const APP_LINK_VIDEO_PREFIX = `${APP_LINK_BASE_PATH}/video/`;
+const CUSTOM_LINK_SCHEME = 'scrollix:';
+const CUSTOM_LINK_VIDEO_HOST = 'video';
 
 @Component({
   selector: 'app-root',
@@ -67,6 +69,10 @@ export class App {
     if (!rawUrl) return null;
     try {
       const url = new URL(rawUrl);
+      if (url.protocol === CUSTOM_LINK_SCHEME && url.hostname === CUSTOM_LINK_VIDEO_HOST) {
+        const hash = url.pathname.replace(/^\/+/, '');
+        return hash ? `/video/${hash}${url.search}${url.hash}` : null;
+      }
       if (url.hostname !== APP_LINK_HOST) return null;
       if (!url.pathname.startsWith(APP_LINK_VIDEO_PREFIX)) return null;
       return url.pathname.slice(APP_LINK_BASE_PATH.length) + url.search + url.hash;

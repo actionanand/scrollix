@@ -20,6 +20,12 @@ jobs:
         with:
           node-version: '24.11.1'
 
+      - name: Setup Java (JDK 21)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
       - name: Install dependencies
         run: npm install
 
@@ -28,6 +34,14 @@ jobs:
           PASSWORD_HASH: ${{ secrets.PASSWORD_HASH }}
         run: |
           sed -i "s|PASSWORD_HASH_PLACEHOLDER|${{ env.PASSWORD_HASH }}|g" src/environments/environment.ts
+
+      - name: Generate Android asset links
+        env:
+          SHA256_FINGERPRINT: ${{ secrets.SHA256_FINGERPRINT }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: npm run generate:assetlinks
 
       - name: Extract repository name from package.json
         id: package
@@ -38,6 +52,12 @@ jobs:
 
       - name: Copy error files to redirect to home
         run: npm run copy-error-page
+
+      - name: Copy asset links to deployed .well-known folder
+        run: |
+          mkdir -p dist/${{ steps.package.outputs.name }}/browser/.well-known
+          cp public/.well-known/assetlinks.json dist/${{ steps.package.outputs.name }}/browser/.well-known/assetlinks.json
+          touch dist/${{ steps.package.outputs.name }}/browser/.nojekyll
 
       - name: Deploy
         if: success()

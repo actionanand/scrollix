@@ -47,6 +47,14 @@ jobs:
           sed -i "s|PASSWORD_HASH_PLACEHOLDER|$PASSWORD_HASH|g" src/environments/environment.ts
           sed -i "s|TOKEN_PLACEHOLDER|$TOKEN_HASH|g" src/environments/environment.ts
 
+      - name: Generate Android asset links
+        env:
+          SHA256_FINGERPRINT: ${{ secrets.SHA256_FINGERPRINT }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: npm run generate:assetlinks
+
       - name: Build Angular app (production)
         run: npm run build -- --configuration=production
 
@@ -250,15 +258,17 @@ jobs:
       - name: Commit APK & AAB to branch
         run: |
           mkdir -p releases
+          mkdir -p releases/.well-known
           # Remove old builds before copying new ones
           rm -f releases/scrollix-release.apk releases/scrollix-release.aab
           cp android/app/build/outputs/apk/release/scrollix-release.apk releases/scrollix-release.apk
           cp android/app/build/outputs/bundle/release/scrollix-release.aab releases/scrollix-release.aab
+          cp public/.well-known/assetlinks.json releases/.well-known/assetlinks.json
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git pull --rebase --autostash
-          git add releases/
+          git add releases/ public/.well-known/assetlinks.json
           git diff --cached --quiet || git commit -m "build: update APK & AAB releases [skip ci]"
           git push
 

@@ -236,11 +236,24 @@
     <ol class="logic-list">
       <li>Column H, <strong>Hash</strong>, is the permanent dynamic page ID.</li>
       <li>
-        A video detail URL looks like <code>/video/1782327289455-R2-455437-fb6da68a4f6f</code>.
+        A web video detail URL looks like
+        <code
+          >https://actionanand.github.io/scrollix/video/1782327289455-R2-455437-fb6da68a4f6f</code
+        >.
       </li>
       <li>
-        Android App Links are limited to <code>actionanand.github.io/scrollix/video/...</code>, so
-        other GitHub Pages apps on the same domain are not matched.
+        Android direct links can also use
+        <code>scrollix://video/1782327289455-R2-455437-fb6da68a4f6f</code>. This custom scheme does
+        not need a root <code>.well-known</code> file.
+      </li>
+      <li>
+        The copy menu offers <strong>Web link</strong> from <code>PUBLIC_BASE_URL</code> and
+        <strong>Android link</strong> from <code>ANDROID_PUBLIC_BASE_URL</code>.
+      </li>
+      <li>
+        Verified Android App Links are limited to
+        <code>actionanand.github.io/scrollix/video/...</code>, so other GitHub Pages apps on the
+        same domain are not matched.
       </li>
       <li>
         Generate a new hash whenever the row content changes, such as

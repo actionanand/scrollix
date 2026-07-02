@@ -22,7 +22,7 @@ import {
 import { MediaItem } from '../../models/media-item.model';
 import { ToastService } from '../../services/toast.service';
 import { YoutubeService, YtPlayer } from '../../services/youtube.service';
-import { buildVideoShareUrl } from '../../utils/share-url';
+import { buildVideoShareUrl, type VideoShareTarget } from '../../utils/share-url';
 
 interface DocumentPipApi {
   requestWindow(options: { width: number; height: number }): Promise<{ document: Document }>;
@@ -51,6 +51,7 @@ export class VideoPlayerComponent {
   protected readonly dailymotionActivated = signal(false);
   protected readonly appFullscreen = signal(false);
   protected readonly miniPipUrl = signal<string | null>(null);
+  protected readonly shareMenuOpen = signal(false);
   private readonly resolvedFacebookVideoUrl = signal<string | null>(null);
   private readonly resolvedTikTokVideoUrl = signal<string | null>(null);
   private ignoreNextPopState = false;
@@ -195,11 +196,16 @@ export class VideoPlayerComponent {
     window.open(this.originalUrl(), '_blank', 'noopener,noreferrer');
   }
 
-  protected async copyLink(): Promise<void> {
-    const url = buildVideoShareUrl(this.item().hash);
+  protected toggleShareMenu(): void {
+    this.shareMenuOpen.update((open) => !open);
+  }
+
+  protected async copyLink(target: VideoShareTarget): Promise<void> {
+    const url = buildVideoShareUrl(this.item().hash, target);
     try {
       await navigator.clipboard.writeText(url);
-      this.toast.show('Link copied');
+      this.shareMenuOpen.set(false);
+      this.toast.show(target === 'android' ? 'Android link copied' : 'Web link copied');
     } catch {
       this.toast.show('Failed to copy link');
     }
