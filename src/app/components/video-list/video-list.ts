@@ -5,6 +5,9 @@ import {
   effect,
   signal,
   ChangeDetectionStrategy,
+  afterNextRender,
+  DestroyRef,
+  ElementRef,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SheetDataService } from '../../services/sheet-data.service';
@@ -12,6 +15,10 @@ import { AuthService } from '../../services/auth.service';
 import { VideoPlayerComponent } from '../video-player/video-player';
 import { MediaItem, MediaType } from '../../models/media-item.model';
 import { environment } from '../../../environments/environment';
+import {
+  AndroidPullToRefresh,
+  attachAndroidPullToRefresh,
+} from '../../utils/android-pull-to-refresh';
 
 const TYPE_LABELS: Record<string, string> = {
   all: 'All Types',
@@ -34,13 +41,10 @@ const TYPE_LABELS: Record<string, string> = {
   imports: [VideoPlayerComponent, RouterLink],
   templateUrl: './video-list.html',
   styleUrl: './video-list.scss',
-  host: {
-    '(touchstart)': 'onTouchStart($event)',
-    '(touchmove)': 'onTouchMove($event)',
-    '(touchend)': 'onTouchEnd()',
-  },
 })
 export class VideoListComponent {
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly sheetData = inject(SheetDataService);
   private readonly auth = inject(AuthService);
   private readonly pageSize = environment.SCROLLIX_CONFIG.videosPerPage;
@@ -52,11 +56,12 @@ export class VideoListComponent {
   protected readonly selectedType = signal<MediaType | 'all'>('all');
   protected readonly searchQuery = signal('');
   protected readonly currentPage = signal(1);
-  protected readonly pullDistance = signal(0);
   protected readonly typeLabels = TYPE_LABELS;
   protected readonly resolvingIds = this.sheetData.resolvingIds;
-
-  private touchStartY = 0;
+  protected readonly pullToRefresh = new AndroidPullToRefresh(
+    () => this.onRefresh(),
+    () => this.loading(),
+  );
 
   private readonly allVideos = computed(() => {
     const isLoggedIn = this.auth.isLoggedIn();
@@ -136,6 +141,9 @@ export class VideoListComponent {
 
   constructor() {
     this.sheetData.loadData();
+    afterNextRender(() => {
+      attachAndroidPullToRefresh(this.host.nativeElement, this.pullToRefresh, this.destroyRef);
+    });
     effect(() => {
       const visible = this.paginatedVideos();
       const prefetch = this.prefetchedVideos();
@@ -185,24 +193,5 @@ export class VideoListComponent {
   protected onRefresh(): void {
     this.sheetData.loadData(true);
     this.currentPage.set(1);
-  }
-
-  protected onTouchStart(e: TouchEvent): void {
-    if (window.scrollY === 0) {
-      this.touchStartY = e.touches[0].clientY;
-    }
-  }
-
-  protected onTouchMove(e: TouchEvent): void {
-    if (this.touchStartY > 0 && window.scrollY === 0) {
-      const diff = e.touches[0].clientY - this.touchStartY;
-      if (diff > 0) this.pullDistance.set(Math.min(diff * 0.4, 80));
-    }
-  }
-
-  protected onTouchEnd(): void {
-    if (this.pullDistance() > 50) this.onRefresh();
-    this.pullDistance.set(0);
-    this.touchStartY = 0;
   }
 }

@@ -22,6 +22,43 @@ need a root `.well-known/assetlinks.json` file. Keep both links available: web l
 open in browsers, and custom scheme links are useful when you want to target the installed Android
 app directly.
 
+## Custom Scheme Link Display
+
+Some chat and social apps do not auto-detect custom schemes as clickable hyperlinks. For example,
+WhatsApp may show this as normal text:
+
+```text
+scrollix://video/1782327857062-R2-412348-20df7f826290
+```
+
+That does not mean the Android app link is broken. It means the chat app only turns common schemes
+such as `https://`, `http://`, `tel:`, or `mailto:` into clickable links, while unknown app schemes
+may stay plain text for safety.
+
+If the same `scrollix://video/{Hash}` value is pasted into Chrome's address bar on Android, Chrome
+passes it to Android's intent resolver. Android then checks installed apps for an intent filter that
+handles:
+
+```text
+scheme: scrollix
+host: video
+```
+
+When Scrollix is installed, Android can open the matching video page in the app. This custom scheme
+path does not use Digital Asset Links and does not need `.well-known/assetlinks.json`.
+
+For broad sharing in chats, prefer the HTTPS web link:
+
+```text
+https://actionanand.github.io/scrollix/video/{Hash}
+```
+
+For direct Android-app targeting, use:
+
+```text
+scrollix://video/{Hash}
+```
+
 ## What `assetlinks.json` Does
 
 Android uses `assetlinks.json` to verify that a web domain allows an Android app to handle matching

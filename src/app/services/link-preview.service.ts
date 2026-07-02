@@ -30,7 +30,8 @@ export class LinkPreviewService {
 
   getPreview(url: string): Observable<LinkPreview> {
     const cached = this.cache.get(url) ?? this.loadCachedPreview(url);
-    if (cached) return of(cached);
+    if (cached && this.canUseCachedPreview(url, cached)) return of(cached);
+    if (cached) this.cache.delete(url);
 
     if (this.isAndroidApp()) {
       return this.fetchAndroidNative(url).pipe(
@@ -146,6 +147,11 @@ export class LinkPreviewService {
         localStorage.setItem(PREVIEW_CACHE_KEY, JSON.stringify(cache));
         return null;
       }
+      if (!this.canUseCachedPreview(url, entry.preview)) {
+        delete cache[url];
+        localStorage.setItem(PREVIEW_CACHE_KEY, JSON.stringify(cache));
+        return null;
+      }
       this.cache.set(url, entry.preview);
       return entry.preview;
     } catch {
@@ -181,5 +187,19 @@ export class LinkPreviewService {
       /* keep url */
     }
     return { title: domain, description: url, image: '', url, logo: '' };
+  }
+
+  private canUseCachedPreview(url: string, preview: LinkPreview): boolean {
+    if (!this.isFacebookSharePostUrl(url)) return true;
+    return !!preview.image || preview.url !== url;
+  }
+
+  private isFacebookSharePostUrl(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      return /(^|\.)facebook\.com$/i.test(parsed.hostname) && parsed.pathname.includes('/share/p/');
+    } catch {
+      return false;
+    }
   }
 }
