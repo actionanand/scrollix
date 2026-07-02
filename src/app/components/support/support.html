@@ -187,6 +187,10 @@
           <code>https://www.facebook.com/share/p/1FkYn1GL29/</code> are valid.
         </p>
         <p>
+          Android resolves Facebook share post redirects before reading OG title, description, and
+          image metadata.
+        </p>
+        <p>
           In the Android app, normal blogs open in the Scrollix in-app browser. URLs matching
           <code>ANDROID_POST_EXTERNAL_APPS</code> in the environment, currently
           <code>facebook</code> and <code>instagram</code>, open directly through Android so the
@@ -245,6 +249,12 @@
         Android direct links can also use
         <code>scrollix://video/1782327289455-R2-455437-fb6da68a4f6f</code>. This custom scheme does
         not need a root <code>.well-known</code> file.
+      </li>
+      <li>
+        Some chat apps may show <code>scrollix://...</code> as plain text instead of a clickable
+        hyperlink because custom schemes are not always auto-detected. If pasted into Chrome's
+        address bar on Android, Chrome can pass it to Android's intent resolver and open Scrollix
+        when the app is installed.
       </li>
       <li>
         The copy menu offers <strong>Web link</strong> from <code>PUBLIC_BASE_URL</code> and

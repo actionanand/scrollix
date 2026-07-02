@@ -1,9 +1,3 @@
-@if (pullDistance() > 0) {
-  <div class="pull-indicator" [style.height.px]="pullDistance()">
-    <span>{{ pullDistance() > 50 ? '↻ Release to refresh' : '↓ Pull to refresh' }}</span>
-  </div>
-}
-
 <div class="toolbar">
   <input
     type="search"

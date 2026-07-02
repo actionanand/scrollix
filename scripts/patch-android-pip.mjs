@@ -139,7 +139,7 @@ public class ScrollixBrowserPlugin extends Plugin {
 
     new Thread(() -> {
       try {
-        String html = downloadHtml(url);
+        String html = downloadHtml(url).html;
         JSObject result = new JSObject();
         result.put("html", html);
         getActivity().runOnUiThread(() -> call.resolve(result));
@@ -166,8 +166,8 @@ public class ScrollixBrowserPlugin extends Plugin {
 
     new Thread(() -> {
       try {
-        String html = downloadHtml(url);
-        JSObject result = extractPreview(html, url);
+        DownloadedHtml page = downloadHtml(url);
+        JSObject result = extractPreview(page.html, page.finalUrl);
         getActivity().runOnUiThread(() -> call.resolve(result));
       } catch (Exception ex) {
         getActivity().runOnUiThread(() -> call.reject("Unable to fetch link preview."));
@@ -175,11 +175,11 @@ public class ScrollixBrowserPlugin extends Plugin {
     }).start();
   }
 
-  private String downloadHtml(String rawUrl) throws Exception {
+  private DownloadedHtml downloadHtml(String rawUrl) throws Exception {
     return downloadHtml(rawUrl, 0);
   }
 
-  private String downloadHtml(String rawUrl, int redirects) throws Exception {
+  private DownloadedHtml downloadHtml(String rawUrl, int redirects) throws Exception {
     HttpURLConnection connection = (HttpURLConnection) new URL(rawUrl).openConnection();
     connection.setInstanceFollowRedirects(true);
     connection.setConnectTimeout(15000);
@@ -204,9 +204,19 @@ public class ScrollixBrowserPlugin extends Plugin {
       while ((line = reader.readLine()) != null) {
         html.append(line).append('\\n');
       }
-      return html.toString();
+      return new DownloadedHtml(html.toString(), connection.getURL().toString());
     } finally {
       connection.disconnect();
+    }
+  }
+
+  private static class DownloadedHtml {
+    final String html;
+    final String finalUrl;
+
+    DownloadedHtml(String html, String finalUrl) {
+      this.html = html;
+      this.finalUrl = finalUrl;
     }
   }
 

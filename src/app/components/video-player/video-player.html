@@ -2,7 +2,13 @@
   @if (showMetadata() && item().title) {
     <h3 class="video-title">{{ item().title }}</h3>
   }
-  <div class="video-wrapper" [class.video-wrapper--vertical]="isVertical()">
+  <div
+    class="video-wrapper"
+    [class.video-wrapper--vertical]="isVertical()"
+    [class.video-wrapper--interactive]="playerInteractionActive() || appFullscreen()"
+    (wheel)="scrollPageFromWheel($event)"
+    (mouseleave)="deactivatePlayerInteraction()"
+  >
     @if (appFullscreen()) {
       <button
         class="fullscreen-close"
@@ -52,6 +58,18 @@
         [title]="item().title || 'Video ' + item().sNo"
         loading="lazy"
       ></iframe>
+    }
+    @if (!playerInteractionActive() && !appFullscreen() && !isDeferredDailymotion()) {
+      <button
+        class="player-scroll-shield"
+        type="button"
+        (click)="activatePlayerInteraction()"
+        (touchstart)="startShieldTouch($event)"
+        (touchmove)="scrollPageFromShieldTouch($event)"
+        (touchend)="endShieldTouch()"
+        (touchcancel)="endShieldTouch()"
+        aria-label="Enable video controls"
+      ></button>
     }
   </div>
   @if (showMetadata() && item().desc) {

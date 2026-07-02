@@ -52,9 +52,13 @@ export class VideoPlayerComponent {
   protected readonly appFullscreen = signal(false);
   protected readonly miniPipUrl = signal<string | null>(null);
   protected readonly shareMenuOpen = signal(false);
+  protected readonly playerInteractionActive = signal(false);
   private readonly resolvedFacebookVideoUrl = signal<string | null>(null);
   private readonly resolvedTikTokVideoUrl = signal<string | null>(null);
   private ignoreNextPopState = false;
+  private interactionTimer: ReturnType<typeof setTimeout> | undefined;
+  private shieldTouchY: number | null = null;
+  private shieldTouchMoved = false;
 
   private readonly iframeRef = viewChild<ElementRef<HTMLIFrameElement>>('playerIframe');
   private ytPlayer: YtPlayer | undefined;
@@ -156,6 +160,7 @@ export class VideoPlayerComponent {
     this.destroyRef.onDestroy(() => {
       this.ytPlayer?.destroy();
       this.ytPlayer = undefined;
+      if (this.interactionTimer) clearTimeout(this.interactionTimer);
       window.removeEventListener('popstate', this.handlePopState);
     });
 
@@ -281,9 +286,65 @@ export class VideoPlayerComponent {
     this.miniPipUrl.set(null);
   }
 
+  protected activatePlayerInteraction(): void {
+    if (this.shieldTouchMoved) return;
+    this.playerInteractionActive.set(true);
+    if (this.interactionTimer) clearTimeout(this.interactionTimer);
+    this.interactionTimer = setTimeout(() => this.playerInteractionActive.set(false), 8000);
+  }
+
+  protected deactivatePlayerInteraction(): void {
+    this.playerInteractionActive.set(false);
+    if (this.interactionTimer) {
+      clearTimeout(this.interactionTimer);
+      this.interactionTimer = undefined;
+    }
+  }
+
+  protected scrollPageFromWheel(event: WheelEvent): void {
+    if (this.appFullscreen() || this.playerInteractionActive()) return;
+    if (this.scrollDocumentBy(event.deltaY) && event.cancelable) event.preventDefault();
+  }
+
+  protected startShieldTouch(event: TouchEvent): void {
+    this.shieldTouchY = event.touches[0]?.clientY ?? null;
+    this.shieldTouchMoved = false;
+  }
+
+  protected scrollPageFromShieldTouch(event: TouchEvent): void {
+    if (this.shieldTouchY == null) return;
+    const nextY = event.touches[0]?.clientY;
+    if (nextY == null) return;
+
+    const delta = this.shieldTouchY - nextY;
+    this.shieldTouchY = nextY;
+    if (Math.abs(delta) < 1) return;
+
+    if (Math.abs(delta) > 4) this.shieldTouchMoved = true;
+    if (this.scrollDocumentBy(delta) && event.cancelable) event.preventDefault();
+  }
+
+  protected endShieldTouch(): void {
+    const moved = this.shieldTouchMoved;
+    this.shieldTouchY = null;
+    if (moved) {
+      setTimeout(() => {
+        this.shieldTouchMoved = false;
+      }, 0);
+    }
+  }
+
   private openMiniPip(src: string): void {
     this.miniPipUrl.set(src);
     this.toast.show('Mini player opened');
+  }
+
+  private scrollDocumentBy(deltaY: number): boolean {
+    if (!Number.isFinite(deltaY) || deltaY === 0) return false;
+    const scroller = document.scrollingElement ?? document.documentElement;
+    const before = scroller.scrollTop;
+    scroller.scrollTop = before + deltaY;
+    return scroller.scrollTop !== before;
   }
 
   private async requestAndroidPip(width: number, height: number): Promise<boolean> {
