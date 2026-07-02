@@ -121,9 +121,9 @@ export class LinkPreviewService {
     url: string,
   ): LinkPreview | null {
     if (!preview) return null;
-    const title = preview.title?.trim() ?? '';
-    const description = preview.description?.trim() ?? '';
-    const image = preview.image?.trim() ?? '';
+    const title = this.decodeHtmlEntities(preview.title?.trim() ?? '');
+    const description = this.decodeHtmlEntities(preview.description?.trim() ?? '');
+    const image = this.sanitizePreviewImage(preview.image?.trim() ?? '', url);
     const previewUrl = preview.url?.trim() || url;
     const logo = preview.logo?.trim() ?? '';
     if (!title && !description && !image) return null;
@@ -201,7 +201,7 @@ export class LinkPreviewService {
 
   private canUseCachedPreview(url: string, preview: LinkPreview): boolean {
     if (!this.isFacebookSharePostUrl(url)) return true;
-    return !!preview.image;
+    return !!this.sanitizePreviewImage(preview.image, url);
   }
 
   private isFacebookSharePostUrl(url: string): boolean {
@@ -211,5 +211,38 @@ export class LinkPreviewService {
     } catch {
       return false;
     }
+  }
+
+  private sanitizePreviewImage(image: string, sourceUrl: string): string {
+    if (!image) return '';
+    const normalized = this.decodeHtmlEntities(image);
+    let parsed: URL;
+    try {
+      parsed = new URL(normalized, sourceUrl);
+    } catch {
+      return '';
+    }
+
+    const href = parsed.href;
+    const lower = href.toLowerCase();
+    if (lower.startsWith('data:')) return '';
+    if (lower.includes('emoji')) return '';
+    if (lower.includes('static.xx.fbcdn.net/rsrc.php')) return '';
+    if (lower.includes('/images/emoji.php')) return '';
+    if (this.isFacebookSharePostUrl(sourceUrl) && !lower.includes('fbcdn.net')) return '';
+    return href;
+  }
+
+  private decodeHtmlEntities(value: string): string {
+    if (!value) return '';
+    const textarea = document.createElement('textarea');
+    let decoded = value;
+    for (let index = 0; index < 3; index++) {
+      textarea.innerHTML = decoded;
+      const next = textarea.value;
+      if (next === decoded) break;
+      decoded = next;
+    }
+    return decoded.replace(/\s+/g, ' ').trim();
   }
 }

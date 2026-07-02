@@ -29,7 +29,13 @@
         (keydown.enter)="openPost()"
       >
         @if (p.image) {
-          <img [src]="p.image" [alt]="p.title" class="preview-image" loading="lazy" />
+          <img
+            [src]="p.image"
+            [alt]="p.title"
+            class="preview-image"
+            loading="lazy"
+            (error)="hideBrokenPreviewImage($event)"
+          />
         }
         <div class="preview-info">
           @if (p.logo) {

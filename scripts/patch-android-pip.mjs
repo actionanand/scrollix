@@ -271,12 +271,13 @@ public class ScrollixBrowserPlugin extends Plugin {
   }
 
   private boolean hasUsefulPreview(String html) {
-    return !firstNonEmpty(
+    String image = firstNonEmpty(
       metaContent(html, "property", "og:image"),
       metaContent(html, "property", "og:image:url"),
       metaContent(html, "name", "twitter:image"),
       firstImageSrc(html)
-    ).isEmpty();
+    );
+    return isUsefulImage(image);
   }
 
   private JSObject extractPreview(String html, String sourceUrl) {
@@ -311,7 +312,7 @@ public class ScrollixBrowserPlugin extends Plugin {
     JSObject result = new JSObject();
     result.put("title", cleanText(title));
     result.put("description", cleanText(description));
-    result.put("image", absoluteUrl(sourceUrl, cleanText(image)));
+    result.put("image", cleanImageUrl(sourceUrl, image));
     result.put("url", absoluteUrl(sourceUrl, cleanText(previewUrl)));
     result.put("logo", absoluteUrl(sourceUrl, cleanText(logo)));
     return result;
@@ -395,7 +396,13 @@ public class ScrollixBrowserPlugin extends Plugin {
     return !lower.startsWith("data:") &&
       !lower.contains("emoji") &&
       !lower.contains("static.xx.fbcdn.net/rsrc.php") &&
+      !lower.contains("/images/emoji.php") &&
       (lower.contains("fbcdn.net") || lower.startsWith("http"));
+  }
+
+  private String cleanImageUrl(String baseUrl, String value) {
+    String image = absoluteUrl(baseUrl, cleanText(value));
+    return isUsefulImage(image) ? image : "";
   }
 
   private String metaContent(String html, String keyAttribute, String keyValue) {
@@ -462,15 +469,39 @@ public class ScrollixBrowserPlugin extends Plugin {
   private String htmlDecode(String value) {
     if (value == null) return "";
     String quote = String.valueOf((char) 34);
-    return value
-      .replace("&amp;", "&")
-      .replace("&quot;", quote)
-      .replace("&#34;", quote)
-      .replace("&#39;", "'")
-      .replace("&apos;", "'")
-      .replace("&lt;", "<")
-      .replace("&gt;", ">")
-      .trim();
+    String decoded = value;
+    for (int index = 0; index < 3; index++) {
+      String next = decoded
+        .replace("&amp;", "&")
+        .replace("&quot;", quote)
+        .replace("&#34;", quote)
+        .replace("&#39;", "'")
+        .replace("&apos;", "'")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">");
+      next = decodeNumericEntities(next);
+      if (next.equals(decoded)) break;
+      decoded = next;
+    }
+    return decoded.trim();
+  }
+
+  private String decodeNumericEntities(String value) {
+    Matcher matcher = Pattern.compile("&#(x?[0-9A-Fa-f]+);").matcher(value);
+    StringBuffer out = new StringBuffer();
+    while (matcher.find()) {
+      String raw = matcher.group(1);
+      try {
+        int codePoint = raw.startsWith("x") || raw.startsWith("X")
+          ? Integer.parseInt(raw.substring(1), 16)
+          : Integer.parseInt(raw, 10);
+        matcher.appendReplacement(out, Matcher.quoteReplacement(new String(Character.toChars(codePoint))));
+      } catch (Exception ignored) {
+        matcher.appendReplacement(out, Matcher.quoteReplacement(matcher.group(0)));
+      }
+    }
+    matcher.appendTail(out);
+    return out.toString();
   }
 }
 `,

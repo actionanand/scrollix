@@ -32,6 +32,7 @@ export class PostCardComponent {
 
   protected readonly preview = signal<LinkPreview | null>(null);
   protected readonly previewLoading = signal(false);
+  private readonly previewOpenUrl = computed(() => this.preview()?.url || this.item().url);
 
   // True only for direct Facebook post URLs, not share/p/ short links.
   protected readonly isFacebookPost = computed(() => {
@@ -76,7 +77,7 @@ export class PostCardComponent {
 
   protected openPost(): void {
     if (this.offlinePosts.showOfflineOnly() && this.offlinePosts.openSaved(this.item())) return;
-    this.postOpenPreference.openPost(this.item());
+    this.postOpenPreference.openUrl(this.previewOpenUrl(), this.item().title);
   }
 
   protected toggleOffline(): void {
@@ -86,5 +87,10 @@ export class PostCardComponent {
       return;
     }
     void this.offlinePosts.save(item);
+  }
+
+  protected hideBrokenPreviewImage(event: Event): void {
+    const image = event.target;
+    if (image instanceof HTMLImageElement) image.hidden = true;
   }
 }
