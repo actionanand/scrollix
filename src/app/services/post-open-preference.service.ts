@@ -22,6 +22,25 @@ export class PostOpenPreferenceService {
     this.openExternal(item.url);
   }
 
+  openUrl(url: string, title = ''): void {
+    if (this.isAndroidApp() && this.openInApp() && !this.shouldOpenExternally(url)) {
+      void this.openNativeReader({
+        sNo: 0,
+        type: 'post',
+        url,
+        isProtected: false,
+        title,
+        desc: '',
+        startTime: null,
+        hash: '',
+        resolvedUrl: '',
+      });
+      return;
+    }
+
+    this.openExternal(url);
+  }
+
   openExternal(url: string): void {
     const plugin = window.Capacitor?.Plugins?.ScrollixBrowser;
     if (this.isAndroidApp() && plugin) {
