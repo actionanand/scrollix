@@ -16,6 +16,18 @@ Once the server is running, open your browser and navigate to `http://localhost:
 
 1. https://actionanand.github.io/scrollix/
 
+## Share Links
+
+Scrollix supports two video share formats:
+
+```text
+https://actionanand.github.io/scrollix/video/{Hash}
+scrollix://video/{Hash}
+```
+
+The web format is generated from `PUBLIC_BASE_URL`. The Android app format is generated from
+`ANDROID_PUBLIC_BASE_URL`, currently `scrollix://`, and does not need a root `.well-known` file.
+
 ## Cloning Guide
 
 1.  Clone only the remote primary HEAD (default: origin/main)

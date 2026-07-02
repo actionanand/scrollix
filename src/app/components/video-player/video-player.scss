@@ -244,6 +244,45 @@
   }
 }
 
+.share-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.share-menu__panel {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.45rem);
+  z-index: 5;
+  min-width: 142px;
+  overflow: hidden;
+  border: 1px solid #d6dbe7;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 26px rgba(22, 34, 51, 0.16);
+
+  button {
+    display: block;
+    width: 100%;
+    min-height: 38px;
+    padding: 0.55rem 0.75rem;
+    border: 0;
+    background: #fff;
+    color: #26324a;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: #eef3ff;
+      color: #2847c7;
+      outline: none;
+    }
+  }
+}
+
 .start-time {
   display: block;
   padding: 0 1rem 0.5rem;

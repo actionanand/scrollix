@@ -12,7 +12,7 @@ import { SheetDataService } from '../../services/sheet-data.service';
 import { AuthService } from '../../services/auth.service';
 import { ToastService } from '../../services/toast.service';
 import { VideoPlayerComponent } from '../video-player/video-player';
-import { buildVideoShareUrl } from '../../utils/share-url';
+import { buildVideoShareUrl, type VideoShareTarget } from '../../utils/share-url';
 
 @Component({
   selector: 'app-video-detail',
@@ -29,6 +29,7 @@ export class VideoDetailComponent {
 
   protected readonly loading = this.sheetData.loading;
   private readonly routeId = signal('');
+  protected readonly shareMenuOpen = signal(false);
 
   protected readonly item = computed(() => {
     const hash = this.routeId();
@@ -45,12 +46,6 @@ export class VideoDetailComponent {
     return !!mediaItem && this.sheetData.resolvingIds().has(mediaItem.sNo);
   });
 
-  protected readonly shareUrl = computed(() => {
-    const mediaItem = this.item();
-    if (!mediaItem) return '';
-    return buildVideoShareUrl(mediaItem.hash);
-  });
-
   constructor() {
     const route = inject(ActivatedRoute);
     route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
@@ -65,10 +60,17 @@ export class VideoDetailComponent {
     });
   }
 
-  protected async copyLink(): Promise<void> {
+  protected toggleShareMenu(): void {
+    this.shareMenuOpen.update((open) => !open);
+  }
+
+  protected async copyLink(target: VideoShareTarget): Promise<void> {
+    const mediaItem = this.item();
+    if (!mediaItem) return;
     try {
-      await navigator.clipboard.writeText(this.shareUrl());
-      this.toast.show('Link copied');
+      await navigator.clipboard.writeText(buildVideoShareUrl(mediaItem.hash, target));
+      this.shareMenuOpen.set(false);
+      this.toast.show(target === 'android' ? 'Android link copied' : 'Web link copied');
     } catch {
       this.toast.show('Failed to copy link');
     }

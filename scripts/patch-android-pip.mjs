@@ -150,6 +150,13 @@ public class ScrollixBrowserPlugin extends Plugin {
   }
 
   @PluginMethod
+  public void consumeAppLink(PluginCall call) {
+    JSObject result = new JSObject();
+    result.put("url", MainActivity.consumePendingAppLink());
+    call.resolve(result);
+  }
+
+  @PluginMethod
   public void fetchPreview(PluginCall call) {
     String url = call.getString("url");
     if (url == null || url.trim().isEmpty()) {
@@ -522,16 +529,40 @@ writeFileSync(
   mainActivityPath,
   `package ${appPackage};
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+  private static String pendingAppLink = "";
+
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    storeAppLink(getIntent());
     registerPlugin(ScrollixPipPlugin.class);
     registerPlugin(ScrollixBrowserPlugin.class);
     super.onCreate(savedInstanceState);
+  }
+
+  @Override
+  protected void onNewIntent(Intent intent) {
+    super.onNewIntent(intent);
+    setIntent(intent);
+    storeAppLink(intent);
+  }
+
+  public static synchronized String consumePendingAppLink() {
+    String link = pendingAppLink == null ? "" : pendingAppLink;
+    pendingAppLink = "";
+    return link;
+  }
+
+  private static synchronized void storeAppLink(Intent intent) {
+    if (intent == null) return;
+    Uri data = intent.getData();
+    pendingAppLink = data == null ? "" : data.toString();
   }
 }
 `,
@@ -560,9 +591,54 @@ manifest = manifest.replace(
         'android:name=".MainActivity" android:resizeableActivity="true"',
       );
     }
+    if (!/android:exported=/.test(patched)) {
+      patched = patched.replace(
+        /android:name="\.MainActivity"/,
+        'android:name=".MainActivity" android:exported="true"',
+      );
+    } else {
+      patched = patched.replace(/android:exported="false"/, 'android:exported="true"');
+    }
+    if (!/android:launchMode=/.test(patched)) {
+      patched = patched.replace(
+        /android:name="\.MainActivity"/,
+        'android:name=".MainActivity" android:launchMode="singleTask"',
+      );
+    }
     return patched;
   },
 );
+if (!/android:pathPrefix="\/scrollix\/video\/"/.test(manifest)) {
+  manifest = manifest.replace(
+    /(<activity[\s\S]*?android:name="\.MainActivity"[\s\S]*?>)([\s\S]*?)(<\/activity>)/,
+    `$1$2
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="actionanand.github.io"
+                    android:pathPrefix="/scrollix/video/" />
+            </intent-filter>
+        $3`,
+  );
+}
+if (!/android:scheme="scrollix"/.test(manifest)) {
+  manifest = manifest.replace(
+    /(<activity[\s\S]*?android:name="\.MainActivity"[\s\S]*?>)([\s\S]*?)(<\/activity>)/,
+    `$1$2
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="scrollix"
+                    android:host="video" />
+            </intent-filter>
+        $3`,
+  );
+}
 if (!/android:name="\.ScrollixPostActivity"/.test(manifest)) {
   manifest = manifest.replace(
     /<\/application>/,

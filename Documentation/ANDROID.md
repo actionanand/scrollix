@@ -41,6 +41,56 @@ The `android/` directory is **never committed** — it's generated fresh in ever
 
 ---
 
+## Android App Links
+
+Scrollix handles shared video links in the installed Android app:
+
+```text
+https://actionanand.github.io/scrollix/video/{Hash}
+```
+
+Scrollix also supports a custom Android scheme:
+
+```text
+scrollix://video/{Hash}
+```
+
+The HTTPS Android intent filter is path-scoped to `/scrollix/video/`, so other GitHub Pages apps
+such as `/arbloz` are not matched by Scrollix. The `scrollix://video/{Hash}` custom scheme does not
+need a root `.well-known` file.
+
+For verified one-tap opening, Android also requires a Digital Asset Links file at the domain root:
+
+```text
+https://actionanand.github.io/.well-known/assetlinks.json
+```
+
+That file must be published from the root GitHub Pages site, not from `/scrollix`. Add the Scrollix
+package name and release signing certificate SHA-256 fingerprint:
+
+```json
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.actionanand.scrollix.app",
+      "sha256_cert_fingerprints": ["YOUR_RELEASE_CERT_SHA256"]
+    }
+  }
+]
+```
+
+Without this root file, Android may show an app chooser or keep opening the browser. With it, matching
+`/scrollix/video/...` links open Scrollix directly when the app is installed.
+
+Copy buttons expose both share formats:
+
+- Web link from `PUBLIC_BASE_URL`: `https://actionanand.github.io/scrollix/video/{Hash}`
+- Android link from `ANDROID_PUBLIC_BASE_URL`: `scrollix://video/{Hash}`
+
+---
+
 ## GitHub Secrets Setup
 
 Add these secrets in **Settings → Secrets and variables → Actions**:

@@ -68,6 +68,45 @@
   }
 }
 
+.share-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.share-menu__panel {
+  position: absolute;
+  top: calc(100% + 0.45rem);
+  right: 0;
+  z-index: 5;
+  min-width: 150px;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 26px rgba(22, 34, 51, 0.16);
+
+  button {
+    display: block;
+    width: 100%;
+    min-height: 40px;
+    padding: 0.58rem 0.8rem;
+    border: 0;
+    background: #fff;
+    color: var(--app-text);
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: #eef3ff;
+      color: var(--app-primary);
+      outline: none;
+    }
+  }
+}
+
 .detail-content {
   background: var(--app-surface);
   border: 1px solid rgba(220, 227, 239, 0.72);

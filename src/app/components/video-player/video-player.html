@@ -73,9 +73,24 @@
     <button class="ctrl-btn" (click)="requestPip()" aria-label="Picture in Picture">PIP</button>
     <button class="ctrl-btn" (click)="requestFullscreen()" aria-label="Fullscreen">Full</button>
     <button class="ctrl-btn" (click)="openOriginal()" aria-label="Open original">Open</button>
-    <button class="ctrl-btn ctrl-btn--primary" (click)="copyLink()" aria-label="Copy link">
-      Copy
-    </button>
+    <div class="share-menu">
+      <button
+        class="ctrl-btn ctrl-btn--primary"
+        type="button"
+        (click)="toggleShareMenu()"
+        aria-label="Copy link"
+        aria-haspopup="menu"
+        [attr.aria-expanded]="shareMenuOpen()"
+      >
+        Copy
+      </button>
+      @if (shareMenuOpen()) {
+        <div class="share-menu__panel" role="menu" aria-label="Copy video link">
+          <button type="button" role="menuitem" (click)="copyLink('web')">Web link</button>
+          <button type="button" role="menuitem" (click)="copyLink('android')">Android link</button>
+        </div>
+      }
+    </div>
   </div>
   @if (formattedStartTime()) {
     <span class="start-time">Starts at {{ formattedStartTime() }}</span>

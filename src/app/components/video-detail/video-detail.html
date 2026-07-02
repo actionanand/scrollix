@@ -2,7 +2,26 @@
   <div class="detail-header">
     <button class="back-btn" (click)="goBack()" aria-label="Back to videos">Back</button>
     @if (item()) {
-      <button class="copy-btn" (click)="copyLink()" aria-label="Copy link">Copy Link</button>
+      <div class="share-menu">
+        <button
+          class="copy-btn"
+          type="button"
+          (click)="toggleShareMenu()"
+          aria-label="Copy link"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="shareMenuOpen()"
+        >
+          Copy Link
+        </button>
+        @if (shareMenuOpen()) {
+          <div class="share-menu__panel" role="menu" aria-label="Copy video link">
+            <button type="button" role="menuitem" (click)="copyLink('web')">Web link</button>
+            <button type="button" role="menuitem" (click)="copyLink('android')">
+              Android link
+            </button>
+          </div>
+        }
+      </div>
     }
   </div>
 
