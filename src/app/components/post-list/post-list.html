@@ -1,3 +1,20 @@
+@if (pullToRefresh.enabled && pullToRefresh.distance() > 0) {
+  <div
+    class="pull-refresh-indicator"
+    [style.height.px]="pullToRefresh.distance()"
+    role="status"
+    aria-live="polite"
+  >
+    <span>
+      {{
+        pullToRefresh.distance() >= pullToRefresh.threshold
+          ? 'Release to refresh'
+          : 'Pull to refresh'
+      }}
+    </span>
+  </div>
+}
+
 <div class="toolbar">
   <input
     type="search"

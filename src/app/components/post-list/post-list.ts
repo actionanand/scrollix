@@ -1,10 +1,23 @@
-import { Component, inject, computed, signal, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  inject,
+  computed,
+  signal,
+  ChangeDetectionStrategy,
+  afterNextRender,
+  DestroyRef,
+  ElementRef,
+} from '@angular/core';
 import { SheetDataService } from '../../services/sheet-data.service';
 import { AuthService } from '../../services/auth.service';
 import { PostOpenPreferenceService } from '../../services/post-open-preference.service';
 import { OfflinePostService } from '../../services/offline-post.service';
 import { PostCardComponent } from '../post-card/post-card';
 import { environment } from '../../../environments/environment';
+import {
+  AndroidPullToRefresh,
+  attachAndroidPullToRefresh,
+} from '../../utils/android-pull-to-refresh';
 
 @Component({
   selector: 'app-post-list',
@@ -14,6 +27,8 @@ import { environment } from '../../../environments/environment';
   styleUrl: './post-list.scss',
 })
 export class PostListComponent {
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly sheetData = inject(SheetDataService);
   private readonly auth = inject(AuthService);
   private readonly pageSize = environment.SCROLLIX_CONFIG.postsPerPage;
@@ -26,6 +41,10 @@ export class PostListComponent {
 
   protected readonly searchQuery = signal('');
   protected readonly currentPage = signal(1);
+  protected readonly pullToRefresh = new AndroidPullToRefresh(
+    () => this.onRefresh(),
+    () => this.loading(),
+  );
 
   private readonly allPosts = computed(() => {
     if (this.offlinePosts.showOfflineOnly()) return this.offlinePosts.savedMediaItems();
@@ -76,6 +95,9 @@ export class PostListComponent {
 
   constructor() {
     this.sheetData.loadData();
+    afterNextRender(() => {
+      attachAndroidPullToRefresh(this.host.nativeElement, this.pullToRefresh, this.destroyRef);
+    });
   }
 
   protected onSearchInput(event: Event): void {

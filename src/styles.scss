@@ -59,3 +59,26 @@ button {
 ::selection {
   background: rgba(40, 71, 199, 0.18);
 }
+
+.pull-refresh-indicator {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--app-text-muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+  padding-bottom: 0.5rem;
+}
+
+.pull-refresh-indicator span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid rgba(220, 227, 239, 0.86);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px rgba(22, 34, 51, 0.08);
+}

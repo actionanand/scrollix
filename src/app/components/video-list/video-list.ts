@@ -5,6 +5,9 @@ import {
   effect,
   signal,
   ChangeDetectionStrategy,
+  afterNextRender,
+  DestroyRef,
+  ElementRef,
 } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SheetDataService } from '../../services/sheet-data.service';
@@ -12,6 +15,10 @@ import { AuthService } from '../../services/auth.service';
 import { VideoPlayerComponent } from '../video-player/video-player';
 import { MediaItem, MediaType } from '../../models/media-item.model';
 import { environment } from '../../../environments/environment';
+import {
+  AndroidPullToRefresh,
+  attachAndroidPullToRefresh,
+} from '../../utils/android-pull-to-refresh';
 
 const TYPE_LABELS: Record<string, string> = {
   all: 'All Types',
@@ -36,6 +43,8 @@ const TYPE_LABELS: Record<string, string> = {
   styleUrl: './video-list.scss',
 })
 export class VideoListComponent {
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly sheetData = inject(SheetDataService);
   private readonly auth = inject(AuthService);
   private readonly pageSize = environment.SCROLLIX_CONFIG.videosPerPage;
@@ -49,6 +58,10 @@ export class VideoListComponent {
   protected readonly currentPage = signal(1);
   protected readonly typeLabels = TYPE_LABELS;
   protected readonly resolvingIds = this.sheetData.resolvingIds;
+  protected readonly pullToRefresh = new AndroidPullToRefresh(
+    () => this.onRefresh(),
+    () => this.loading(),
+  );
 
   private readonly allVideos = computed(() => {
     const isLoggedIn = this.auth.isLoggedIn();
@@ -128,6 +141,9 @@ export class VideoListComponent {
 
   constructor() {
     this.sheetData.loadData();
+    afterNextRender(() => {
+      attachAndroidPullToRefresh(this.host.nativeElement, this.pullToRefresh, this.destroyRef);
+    });
     effect(() => {
       const visible = this.paginatedVideos();
       const prefetch = this.prefetchedVideos();
