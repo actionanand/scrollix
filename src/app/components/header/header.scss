@@ -1,7 +1,15 @@
+:host {
+  display: block;
+  width: 100%;
+  height: var(--app-header-height);
+}
+
 .app-header {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 40;
+  left: 0;
+  right: 0;
+  z-index: 900;
   display: flex;
   align-items: center;
   justify-content: space-between;

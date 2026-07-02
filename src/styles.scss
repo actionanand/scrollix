@@ -1,4 +1,5 @@
 :root {
+  --app-header-height: calc(4.25rem + env(safe-area-inset-top));
   --app-bg: #f4f7fb;
   --app-bg-strong: #e8eef7;
   --app-surface: #ffffff;
@@ -9,6 +10,12 @@
   --app-accent: #0f8f7d;
   --app-border: #dce3ef;
   --app-shadow: 0 10px 30px rgba(22, 34, 51, 0.1);
+}
+
+@media (max-width: 640px) {
+  :root {
+    --app-header-height: calc(4.75rem + env(safe-area-inset-top));
+  }
 }
 
 *,

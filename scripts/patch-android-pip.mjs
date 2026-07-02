@@ -166,8 +166,9 @@ public class ScrollixBrowserPlugin extends Plugin {
 
     new Thread(() -> {
       try {
-        DownloadedHtml page = downloadHtml(url);
-        page = resolvePreviewPage(page, url);
+        boolean useCrawler = isFacebookSharePostUrl(url);
+        DownloadedHtml page = downloadHtml(url, useCrawler);
+        page = resolvePreviewPage(page, url, useCrawler);
         JSObject result = extractPreview(page.html, page.finalUrl);
         getActivity().runOnUiThread(() -> call.resolve(result));
       } catch (Exception ex) {
@@ -177,15 +178,21 @@ public class ScrollixBrowserPlugin extends Plugin {
   }
 
   private DownloadedHtml downloadHtml(String rawUrl) throws Exception {
-    return downloadHtml(rawUrl, 0);
+    return downloadHtml(rawUrl, false);
   }
 
-  private DownloadedHtml downloadHtml(String rawUrl, int redirects) throws Exception {
+  private DownloadedHtml downloadHtml(String rawUrl, boolean useCrawlerUserAgent) throws Exception {
+    return downloadHtml(rawUrl, 0, useCrawlerUserAgent);
+  }
+
+  private DownloadedHtml downloadHtml(String rawUrl, int redirects, boolean useCrawlerUserAgent) throws Exception {
     HttpURLConnection connection = (HttpURLConnection) new URL(rawUrl).openConnection();
     connection.setInstanceFollowRedirects(true);
     connection.setConnectTimeout(15000);
     connection.setReadTimeout(20000);
-    connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36 Scrollix");
+    connection.setRequestProperty("User-Agent", useCrawlerUserAgent
+      ? "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+      : "Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36 Scrollix");
     connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
     connection.setRequestProperty("Accept-Language", "en-US,en;q=0.9");
 
@@ -194,7 +201,7 @@ public class ScrollixBrowserPlugin extends Plugin {
       String location = connection.getHeaderField("Location");
       connection.disconnect();
       if (location != null && !location.trim().isEmpty()) {
-        return downloadHtml(new URL(new URL(rawUrl), location).toString(), redirects + 1);
+        return downloadHtml(new URL(new URL(rawUrl), location).toString(), redirects + 1, useCrawlerUserAgent);
       }
     }
 
@@ -221,7 +228,7 @@ public class ScrollixBrowserPlugin extends Plugin {
     }
   }
 
-  private DownloadedHtml resolvePreviewPage(DownloadedHtml page, String originalUrl) {
+  private DownloadedHtml resolvePreviewPage(DownloadedHtml page, String originalUrl, boolean useCrawlerUserAgent) {
     if (!isFacebookSharePostUrl(originalUrl) || hasUsefulPreview(page.html)) return page;
 
     DownloadedHtml best = page;
@@ -232,7 +239,7 @@ public class ScrollixBrowserPlugin extends Plugin {
       facebookContentUrl(page.html)
     );
 
-    best = tryPreviewTarget(best, target);
+    best = tryPreviewTarget(best, target, useCrawlerUserAgent);
     if (hasUsefulPreview(best.html)) return best;
 
     String shareCode = facebookShareCode(originalUrl);
@@ -243,7 +250,7 @@ public class ScrollixBrowserPlugin extends Plugin {
         "https://www.facebook.com/share/p/" + shareCode + "/?mibextid=wwXIfr"
       };
       for (String candidate : candidates) {
-        best = tryPreviewTarget(best, candidate);
+        best = tryPreviewTarget(best, candidate, useCrawlerUserAgent);
         if (hasUsefulPreview(best.html)) return best;
       }
     }
@@ -251,13 +258,13 @@ public class ScrollixBrowserPlugin extends Plugin {
     return best;
   }
 
-  private DownloadedHtml tryPreviewTarget(DownloadedHtml fallback, String target) {
+  private DownloadedHtml tryPreviewTarget(DownloadedHtml fallback, String target, boolean useCrawlerUserAgent) {
     if (target == null || target.trim().isEmpty()) return fallback;
     String resolvedTarget = absoluteUrl(fallback.finalUrl, target.trim());
     if (resolvedTarget.equals(fallback.finalUrl)) return fallback;
 
     try {
-      return downloadHtml(resolvedTarget);
+      return downloadHtml(resolvedTarget, useCrawlerUserAgent);
     } catch (Exception ignored) {
       return fallback;
     }
@@ -267,7 +274,8 @@ public class ScrollixBrowserPlugin extends Plugin {
     return !firstNonEmpty(
       metaContent(html, "property", "og:image"),
       metaContent(html, "property", "og:image:url"),
-      metaContent(html, "name", "twitter:image")
+      metaContent(html, "name", "twitter:image"),
+      firstImageSrc(html)
     ).isEmpty();
   }
 
