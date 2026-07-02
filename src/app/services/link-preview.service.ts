@@ -191,7 +191,7 @@ export class LinkPreviewService {
 
   private canUseCachedPreview(url: string, preview: LinkPreview): boolean {
     if (!this.isFacebookSharePostUrl(url)) return true;
-    return !!preview.image || preview.url !== url;
+    return !!preview.image;
   }
 
   private isFacebookSharePostUrl(url: string): boolean {
