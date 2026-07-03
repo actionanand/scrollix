@@ -34,36 +34,51 @@ export class PostCardComponent {
   protected readonly previewLoading = signal(false);
   private readonly previewOpenUrl = computed(() => this.preview()?.url || this.item().url);
 
-  // True only for direct Facebook post URLs, not share/p/ short links.
-  protected readonly isFacebookPost = computed(() => {
+  protected readonly postEmbedKind = computed<'facebook' | 'instagram' | null>(() => {
     const url = this.item().url;
-    return url.includes('facebook.com') && !url.includes('/share/');
+    if (this.isFacebookPostUrl(url)) return 'facebook';
+    if (this.instagramEmbedPath(url)) return 'instagram';
+    return null;
   });
 
   protected readonly embedUrl = computed(() => {
     const mediaItem = this.item();
-    if (!this.isFacebookPost()) return null;
-    const url = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(mediaItem.url)}&show_text=true&width=500`;
-    return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    const kind = this.postEmbedKind();
+    if (kind === 'facebook') {
+      const url = `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(mediaItem.url)}&show_text=true&width=500`;
+      return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    }
+
+    const instagramPath = this.instagramEmbedPath(mediaItem.url);
+    if (kind === 'instagram' && instagramPath) {
+      return this.sanitizer.bypassSecurityTrustResourceUrl(
+        `https://www.instagram.com/${instagramPath}/embed/`,
+      );
+    }
+
+    return null;
   });
 
   constructor() {
     effect(() => {
       const item = this.item();
-      // Fetch preview for non-Facebook posts AND Facebook share short links
-      if (item.type === 'post' && !this.isFacebookPost()) {
-        this.previewLoading.set(true);
-        this.linkPreview
-          .getPreview(item.url)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (data) => {
-              this.preview.set(data);
-              this.previewLoading.set(false);
-            },
-            error: () => this.previewLoading.set(false),
-          });
+      if (item.type !== 'post' || this.postEmbedKind()) {
+        this.preview.set(null);
+        this.previewLoading.set(false);
+        return;
       }
+
+      this.previewLoading.set(true);
+      this.linkPreview
+        .getPreview(item.url)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (data) => {
+            this.preview.set(data);
+            this.previewLoading.set(false);
+          },
+          error: () => this.previewLoading.set(false),
+        });
     });
   }
 
@@ -92,5 +107,37 @@ export class PostCardComponent {
   protected hideBrokenPreviewImage(event: Event): void {
     const image = event.target;
     if (image instanceof HTMLImageElement) image.hidden = true;
+  }
+
+  private isFacebookPostUrl(rawUrl: string): boolean {
+    try {
+      const url = new URL(rawUrl);
+      if (!/(^|\.)facebook\.com$/i.test(url.hostname)) return false;
+      const path = url.pathname.toLowerCase();
+      const isGroupPostPath =
+        path.includes('/groups/') && (path.includes('/posts/') || path.includes('/permalink/'));
+      return (
+        path.includes('/share/p/') ||
+        path.includes('/posts/') ||
+        isGroupPostPath ||
+        path.includes('/permalink.php') ||
+        path.includes('/story.php') ||
+        path.includes('/photo.php')
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private instagramEmbedPath(rawUrl: string): string {
+    try {
+      const url = new URL(rawUrl);
+      if (!/(^|\.)instagram\.com$/i.test(url.hostname)) return '';
+      const [kind, code] = url.pathname.split('/').filter(Boolean);
+      if (!code || (kind !== 'p' && kind !== 'reel')) return '';
+      return `${kind}/${code}`;
+    } catch {
+      return '';
+    }
   }
 }
