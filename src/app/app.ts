@@ -11,11 +11,12 @@ import { HeaderComponent } from './components/header/header';
 import { ToastComponent } from './components/toast/toast';
 import { InstallBannerComponent } from './components/install-banner/install-banner';
 import { AuthService } from './services/auth.service';
+import { environment } from '../environments/environment';
 
 const APP_LINK_HOST = 'actionanand.github.io';
 const APP_LINK_BASE_PATH = '/scrollix';
 const APP_LINK_VIDEO_PREFIX = `${APP_LINK_BASE_PATH}/video/`;
-const CUSTOM_LINK_SCHEME = 'scrollix:';
+const CUSTOM_LINK_SCHEME = `${environment.ANDROID_PUBLIC_BASE_URL.split('://')[0]}:`;
 const CUSTOM_LINK_VIDEO_HOST = 'video';
 
 @Component({
