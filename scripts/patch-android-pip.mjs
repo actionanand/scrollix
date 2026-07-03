@@ -59,6 +59,7 @@ writeFileSync(
 
 import android.content.Intent;
 import android.net.Uri;
+import android.util.Base64;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
@@ -67,6 +68,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -312,10 +314,61 @@ public class ScrollixBrowserPlugin extends Plugin {
     JSObject result = new JSObject();
     result.put("title", cleanText(title));
     result.put("description", cleanText(description));
-    result.put("image", cleanImageUrl(sourceUrl, image));
+    result.put("image", resolveImage(sourceUrl, image));
     result.put("url", absoluteUrl(sourceUrl, cleanText(previewUrl)));
     result.put("logo", absoluteUrl(sourceUrl, cleanText(logo)));
     return result;
+  }
+
+  private String resolveImage(String sourceUrl, String image) {
+    String cleaned = cleanImageUrl(sourceUrl, image);
+    if (cleaned.isEmpty()) return "";
+    // Facebook/Instagram CDN images reject requests whose referer is the app origin
+    // (https://localhost), so download them natively and inline as a data URI. This
+    // mirrors how link-preview crawlers (e.g. WhatsApp) render the image reliably.
+    if (!isMetaContentUrl(sourceUrl)) return cleaned;
+    String inlined = inlineImage(cleaned);
+    return inlined.isEmpty() ? cleaned : inlined;
+  }
+
+  private String inlineImage(String imageUrl) {
+    if (imageUrl == null || imageUrl.trim().isEmpty()) return "";
+    HttpURLConnection connection = null;
+    try {
+      connection = (HttpURLConnection) new URL(imageUrl).openConnection();
+      connection.setInstanceFollowRedirects(true);
+      connection.setConnectTimeout(15000);
+      connection.setReadTimeout(20000);
+      connection.setRequestProperty("User-Agent", "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)");
+      connection.setRequestProperty("Accept", "image/avif,image/webp,image/apng,image/*,*/*;q=0.8");
+
+      int status = connection.getResponseCode();
+      if (status < 200 || status >= 300) return "";
+
+      String contentType = connection.getContentType();
+      String mime = contentType != null && contentType.toLowerCase().startsWith("image/")
+        ? contentType.split(";")[0].trim()
+        : "image/jpeg";
+
+      try (InputStream input = connection.getInputStream();
+           ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+        byte[] chunk = new byte[8192];
+        long total = 0;
+        long max = 3L * 1024 * 1024;
+        int read;
+        while ((read = input.read(chunk)) != -1) {
+          total += read;
+          if (total > max) return "";
+          buffer.write(chunk, 0, read);
+        }
+        if (buffer.size() == 0) return "";
+        return "data:" + mime + ";base64," + Base64.encodeToString(buffer.toByteArray(), Base64.NO_WRAP);
+      }
+    } catch (Exception ignored) {
+      return "";
+    } finally {
+      if (connection != null) connection.disconnect();
+    }
   }
 
   private boolean isMetaContentUrl(String rawUrl) {
