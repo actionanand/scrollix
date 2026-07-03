@@ -44,6 +44,14 @@
   }
 }
 
+.post-embed--instagram {
+  background: #fff;
+
+  iframe {
+    height: 620px;
+  }
+}
+
 .post-link-card {
   min-width: 0;
   padding: 1rem;

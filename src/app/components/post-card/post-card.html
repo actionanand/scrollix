@@ -2,15 +2,16 @@
   @if (item().title) {
     <h3 class="post-title">{{ item().title }}</h3>
   }
-  @if (isFacebookPost()) {
-    <div class="post-embed">
+  @if (postEmbedKind(); as embedKind) {
+    <div class="post-embed" [class.post-embed--instagram]="embedKind === 'instagram'">
       <iframe
         [src]="embedUrl()"
+        loading="lazy"
         scrolling="no"
         allowTransparency="true"
         allow="encrypted-media"
         referrerpolicy="strict-origin-when-cross-origin"
-        [title]="item().title || 'Post ' + item().sNo"
+        [title]="item().title || embedKind + ' post ' + item().sNo"
       ></iframe>
     </div>
   } @else {
