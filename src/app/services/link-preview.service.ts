@@ -33,6 +33,7 @@ export class LinkPreviewService {
     if (cached && this.canUseCachedPreview(url, cached)) return of(cached);
     if (cached) this.cache.delete(url);
 
+    // ...cache check...
     if (this.isAndroidApp()) {
       return this.fetchAndroidNative(url).pipe(
         map((result) => {
@@ -45,6 +46,7 @@ export class LinkPreviewService {
       );
     }
 
+    // web only ↓ — this branch never runs on Android
     return this.fetchOgDirect(url).pipe(
       switchMap((result) => (result ? of(result) : this.fetchMicrolink(url))),
       map((result) => {
