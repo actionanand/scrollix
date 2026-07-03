@@ -11,7 +11,7 @@ export function buildWebVideoShareUrl(videoId: string): string {
 }
 
 export function buildAndroidVideoShareUrl(videoId: string): string {
-  return buildShareUrl(environment.ANDROID_PUBLIC_BASE_URL || 'scrollix://', videoId);
+  return buildShareUrl(environment.ANDROID_PUBLIC_BASE_URL, videoId);
 }
 
 function buildShareUrl(baseUrl: string, videoId: string): string {

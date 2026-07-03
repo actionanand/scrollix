@@ -6,10 +6,19 @@ import {
   inject,
   DestroyRef,
 } from '@angular/core';
+import { environment } from '../../../environments/environment';
 
 const DISMISS_KEY = 'scrollix.installBannerDismissed';
 const AUTO_HIDE_MS = 15000;
-const APP_DEEP_LINK = 'scrollix://home';
+
+function buildAppDeepLink(base: string, path: string): string {
+  const trimmed = (base ?? '').trim();
+  if (trimmed.endsWith('://') || trimmed.endsWith('/')) return `${trimmed}${path}`;
+  return `${trimmed}/${path}`;
+}
+
+// Derived from the single source of truth in the environment file.
+const APP_DEEP_LINK = buildAppDeepLink(environment.ANDROID_PUBLIC_BASE_URL, 'home');
 
 @Component({
   selector: 'app-install-banner',
