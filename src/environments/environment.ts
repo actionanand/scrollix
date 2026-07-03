@@ -7,7 +7,7 @@ export const environment = {
   ANDROID_POST_EXTERNAL_APPS: ['facebook', 'instagram'],
   SCROLLIX_CONFIG: {
     postsPerPage: 10,
-    videosPerPage: 6,
+    videosPerPage: 12,
     offlinePostLimit: 5,
   },
   PASSWORD: 'PASSWORD_HASH_PLACEHOLDER', // To be replaced during build with actual hash
