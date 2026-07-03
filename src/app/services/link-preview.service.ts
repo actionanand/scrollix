@@ -165,7 +165,10 @@ export class LinkPreviewService {
     try {
       const raw = localStorage.getItem(PREVIEW_CACHE_KEY);
       const cache = raw ? (JSON.parse(raw) as Record<string, CachedPreview>) : {};
-      cache[url] = { timestamp: Date.now(), preview };
+      // Inlined data-URI images can be large; keep them in-memory only so we never
+      // blow the localStorage quota. The stripped entry is re-fetched on next load.
+      const persisted = preview.image.startsWith('data:') ? { ...preview, image: '' } : preview;
+      cache[url] = { timestamp: Date.now(), preview: persisted };
       localStorage.setItem(PREVIEW_CACHE_KEY, JSON.stringify(this.pruneCache(cache)));
     } catch {
       // Ignore storage failures; in-memory cache still works for this session.
@@ -202,7 +205,7 @@ export class LinkPreviewService {
   }
 
   private canUseCachedPreview(url: string, preview: LinkPreview): boolean {
-    if (!this.isFacebookSharePostUrl(url)) return true;
+    if (!this.isMetaContentUrl(url)) return true;
     return !!this.sanitizePreviewImage(preview.image, url);
   }
 
@@ -215,9 +218,25 @@ export class LinkPreviewService {
     }
   }
 
+  private isMetaContentUrl(url: string): boolean {
+    try {
+      const host = new URL(url).hostname.toLowerCase();
+      return (
+        /(^|\.)facebook\.com$/.test(host) ||
+        /(^|\.)fb\.com$/.test(host) ||
+        /(^|\.)instagram\.com$/.test(host)
+      );
+    } catch {
+      return false;
+    }
+  }
+
   private sanitizePreviewImage(image: string, sourceUrl: string): string {
     if (!image) return '';
-    const normalized = this.decodeHtmlEntities(image);
+    const trimmed = image.trim();
+    // Images inlined by the Android native layer are already fetched and trusted.
+    if (/^data:image\//i.test(trimmed)) return trimmed;
+    const normalized = this.decodeHtmlEntities(trimmed);
     let parsed: URL;
     try {
       parsed = new URL(normalized, sourceUrl);
