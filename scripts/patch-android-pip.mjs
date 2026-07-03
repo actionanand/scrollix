@@ -168,8 +168,14 @@ public class ScrollixBrowserPlugin extends Plugin {
 
     new Thread(() -> {
       try {
-        boolean useCrawler = isMetaContentUrl(url);
+        boolean useCrawler = prefersCrawlerUserAgent(url);
         DownloadedHtml page = downloadHtml(url, useCrawler);
+        if (!useCrawler && isChallengePage(page.html)) {
+          // Sites such as Reddit serve a "please wait" verification wall to normal
+          // browsers but return proper Open Graph tags to link-preview crawlers.
+          useCrawler = true;
+          page = downloadHtml(url, true);
+        }
         page = resolvePreviewPage(page, url, useCrawler);
         JSObject result = extractPreview(page.html, page.finalUrl);
         getActivity().runOnUiThread(() -> call.resolve(result));
@@ -323,10 +329,10 @@ public class ScrollixBrowserPlugin extends Plugin {
   private String resolveImage(String sourceUrl, String image) {
     String cleaned = cleanImageUrl(sourceUrl, image);
     if (cleaned.isEmpty()) return "";
-    // Facebook/Instagram CDN images reject requests whose referer is the app origin
-    // (https://localhost), so download them natively and inline as a data URI. This
-    // mirrors how link-preview crawlers (e.g. WhatsApp) render the image reliably.
-    if (!isMetaContentUrl(sourceUrl)) return cleaned;
+    // Facebook/Instagram/Reddit CDN images reject requests whose referer is the app
+    // origin (https://localhost), so download them natively and inline as a data URI.
+    // This mirrors how link-preview crawlers (e.g. WhatsApp) render the image reliably.
+    if (!prefersCrawlerUserAgent(sourceUrl)) return cleaned;
     String inlined = inlineImage(cleaned);
     return inlined.isEmpty() ? cleaned : inlined;
   }
@@ -371,8 +377,26 @@ public class ScrollixBrowserPlugin extends Plugin {
     }
   }
 
-  private boolean isMetaContentUrl(String rawUrl) {
-    return isFacebookUrl(rawUrl) || isInstagramUrl(rawUrl);
+  private boolean prefersCrawlerUserAgent(String rawUrl) {
+    return isFacebookUrl(rawUrl) || isInstagramUrl(rawUrl) || isRedditUrl(rawUrl);
+  }
+
+  private boolean isChallengePage(String html) {
+    if (html == null || html.isEmpty()) return false;
+    // A genuine article can mention these words, so only treat the page as a wall
+    // when it also lacks Open Graph title and image metadata.
+    if (!metaContent(html, "property", "og:title").trim().isEmpty()
+      || !metaContent(html, "property", "og:image").trim().isEmpty()) {
+      return false;
+    }
+    String lower = html.toLowerCase();
+    return lower.contains("please wait")
+      || lower.contains("checking your browser")
+      || lower.contains("just a moment")
+      || lower.contains("verifying you are human")
+      || lower.contains("enable javascript and cookies")
+      || lower.contains("whoa there")
+      || lower.contains("captcha");
   }
 
   private boolean isFacebookUrl(String rawUrl) {
@@ -381,6 +405,10 @@ public class ScrollixBrowserPlugin extends Plugin {
 
   private boolean isInstagramUrl(String rawUrl) {
     return hostEndsWith(rawUrl, "instagram.com");
+  }
+
+  private boolean isRedditUrl(String rawUrl) {
+    return hostEndsWith(rawUrl, "reddit.com") || hostEndsWith(rawUrl, "redd.it");
   }
 
   private boolean hostEndsWith(String rawUrl, String suffix) {
@@ -881,6 +909,9 @@ if (!/android:scheme="scrollix"/.test(manifest)) {
                 <data
                     android:scheme="scrollix"
                     android:host="video" />
+                <data
+                    android:scheme="scrollix"
+                    android:host="home" />
             </intent-filter>
         $3`,
   );

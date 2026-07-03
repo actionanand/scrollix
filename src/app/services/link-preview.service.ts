@@ -224,7 +224,9 @@ export class LinkPreviewService {
       return (
         /(^|\.)facebook\.com$/.test(host) ||
         /(^|\.)fb\.com$/.test(host) ||
-        /(^|\.)instagram\.com$/.test(host)
+        /(^|\.)instagram\.com$/.test(host) ||
+        /(^|\.)reddit\.com$/.test(host) ||
+        /(^|\.)redd\.it$/.test(host)
       );
     } catch {
       return false;

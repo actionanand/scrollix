@@ -196,6 +196,11 @@
           profile, or login page rather than the exact post.
         </p>
         <p>
+          In the Android app these show native OG previews instead of embeds. The metadata and image
+          are fetched on-device using a link-preview crawler, and the image is inlined so it renders
+          reliably. Reddit post URLs work the same way.
+        </p>
+        <p>
           In the Android app, normal blogs open in the Scrollix in-app browser. URLs matching
           <code>ANDROID_POST_EXTERNAL_APPS</code> in the environment, currently
           <code>facebook</code> and <code>instagram</code>, open directly through Android so the
@@ -236,7 +241,16 @@
         Android preview fetching does not use the Microlink quota; Microlink remains a web fallback
         only.
       </li>
+      <li>
+        Facebook, Instagram, and Reddit links are fetched with a link-preview crawler user agent so
+        their public Open Graph tags resolve correctly instead of a login or verification wall.
+      </li>
+      <li>
+        Their preview images are downloaded on-device and embedded inline (as a data URI), because
+        those CDNs block images requested from the app origin (<code>https://localhost</code>).
+      </li>
       <li>Fetched previews are cached locally for up to 7 days, with a maximum of 300 entries.</li>
+      <li>Full details are in <code>Documentation/og-link-previews.md</code>.</li>
     </ul>
   </section>
 
@@ -277,6 +291,10 @@
       <li>
         Share links such as <code>facebook-share</code> and <code>tiktok-share</code> are resolved
         only when that row is viewed or prepared for the current video page.
+      </li>
+      <li>
+        Opening the web app in an Android browser shows a dismissible prompt for 15 seconds to open
+        the installed Scrollix app via <code>scrollix://home</code>.
       </li>
     </ol>
   </section>
