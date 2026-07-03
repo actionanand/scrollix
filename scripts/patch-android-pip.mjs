@@ -166,7 +166,7 @@ public class ScrollixBrowserPlugin extends Plugin {
 
     new Thread(() -> {
       try {
-        boolean useCrawler = isFacebookSharePostUrl(url);
+        boolean useCrawler = isMetaContentUrl(url);
         DownloadedHtml page = downloadHtml(url, useCrawler);
         page = resolvePreviewPage(page, url, useCrawler);
         JSObject result = extractPreview(page.html, page.finalUrl);
@@ -229,7 +229,7 @@ public class ScrollixBrowserPlugin extends Plugin {
   }
 
   private DownloadedHtml resolvePreviewPage(DownloadedHtml page, String originalUrl, boolean useCrawlerUserAgent) {
-    if (!isFacebookSharePostUrl(originalUrl) || hasUsefulPreview(page.html)) return page;
+    if (!isFacebookUrl(originalUrl) || hasUsefulPreview(page.html)) return page;
 
     DownloadedHtml best = page;
     String target = firstNonEmpty(
@@ -318,15 +318,22 @@ public class ScrollixBrowserPlugin extends Plugin {
     return result;
   }
 
-  private boolean isFacebookSharePostUrl(String rawUrl) {
+  private boolean isMetaContentUrl(String rawUrl) {
+    return isFacebookUrl(rawUrl) || isInstagramUrl(rawUrl);
+  }
+
+  private boolean isFacebookUrl(String rawUrl) {
+    return hostEndsWith(rawUrl, "facebook.com") || hostEndsWith(rawUrl, "fb.com");
+  }
+
+  private boolean isInstagramUrl(String rawUrl) {
+    return hostEndsWith(rawUrl, "instagram.com");
+  }
+
+  private boolean hostEndsWith(String rawUrl, String suffix) {
     try {
-      URL url = new URL(rawUrl);
-      String host = url.getHost();
-      String path = url.getPath();
-      return host != null &&
-        host.toLowerCase().endsWith("facebook.com") &&
-        path != null &&
-        path.contains("/share/p/");
+      String host = new URL(rawUrl).getHost();
+      return host != null && host.toLowerCase().endsWith(suffix);
     } catch (Exception ignored) {
       return false;
     }

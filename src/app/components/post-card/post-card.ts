@@ -35,6 +35,9 @@ export class PostCardComponent {
   private readonly previewOpenUrl = computed(() => this.preview()?.url || this.item().url);
 
   protected readonly postEmbedKind = computed<'facebook' | 'instagram' | null>(() => {
+    // On Android every post (including Facebook/Instagram) is rendered through the
+    // native OG preview instead of an iframe embed, so processing stays local.
+    if (this.postOpenPreference.isAndroidApp()) return null;
     const url = this.item().url;
     if (this.isFacebookPostUrl(url)) return 'facebook';
     if (this.instagramEmbedPath(url)) return 'instagram';
