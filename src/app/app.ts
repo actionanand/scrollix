@@ -42,6 +42,7 @@ export class App {
 
   constructor() {
     afterNextRender(() => {
+      void this.applyAndroidSafeArea();
       void this.consumePendingAppLink();
 
       const handleFocus = (): void => {
@@ -58,6 +59,34 @@ export class App {
         document.removeEventListener('visibilitychange', handleVisibility);
       });
     });
+  }
+
+  private async applyAndroidSafeArea(): Promise<void> {
+    if (!this.isAndroidApp()) return;
+    const root = document.documentElement;
+    root.classList.add('scrollix-android-app');
+
+    const plugin = window.Capacitor?.Plugins?.ScrollixBrowser;
+    if (!plugin?.getSystemBars) return;
+
+    try {
+      const bars = await plugin.getSystemBars();
+      this.setSafeAreaCssValue(root, 'top', bars.top);
+      this.setSafeAreaCssValue(root, 'bottom', bars.bottom);
+      this.setSafeAreaCssValue(root, 'left', bars.left);
+      this.setSafeAreaCssValue(root, 'right', bars.right);
+    } catch {
+      // Native insets are a layout enhancement; startup should continue without them.
+    }
+  }
+
+  private setSafeAreaCssValue(
+    root: HTMLElement,
+    side: 'top' | 'right' | 'bottom' | 'left',
+    value: number,
+  ): void {
+    if (!Number.isFinite(value) || value <= 0) return;
+    root.style.setProperty(`--app-native-safe-area-${side}`, `${Math.round(value)}px`);
   }
 
   private async consumePendingAppLink(): Promise<void> {
