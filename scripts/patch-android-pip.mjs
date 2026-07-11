@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const appPackage = 'com.actionanand.scrollix.app';
@@ -8,6 +8,10 @@ const pipPluginPath = join(javaDir, 'ScrollixPipPlugin.java');
 const browserPluginPath = join(javaDir, 'ScrollixBrowserPlugin.java');
 const postActivityPath = join(javaDir, 'ScrollixPostActivity.java');
 const manifestPath = join('android', 'app', 'src', 'main', 'AndroidManifest.xml');
+const stylesPaths = [
+  join('android', 'app', 'src', 'main', 'res', 'values', 'styles.xml'),
+  join('android', 'app', 'src', 'main', 'res', 'values-v31', 'styles.xml'),
+];
 
 mkdirSync(javaDir, { recursive: true });
 
@@ -155,17 +159,6 @@ public class ScrollixBrowserPlugin extends Plugin {
   public void consumeAppLink(PluginCall call) {
     JSObject result = new JSObject();
     result.put("url", MainActivity.consumePendingAppLink());
-    call.resolve(result);
-  }
-
-  @PluginMethod
-  public void getSystemBars(PluginCall call) {
-    JSObject result = new JSObject();
-    boolean edgeToEdge = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R;
-    result.put("top", edgeToEdge ? resourceDp("status_bar_height") : 0);
-    result.put("bottom", edgeToEdge ? resourceDp("navigation_bar_height") : 0);
-    result.put("left", 0);
-    result.put("right", 0);
     call.resolve(result);
   }
 
@@ -602,13 +595,6 @@ public class ScrollixBrowserPlugin extends Plugin {
     matcher.appendTail(out);
     return out.toString();
   }
-
-  private int resourceDp(String name) {
-    int resourceId = getContext().getResources().getIdentifier(name, "dimen", "android");
-    if (resourceId <= 0) return 0;
-    int px = getContext().getResources().getDimensionPixelSize(resourceId);
-    return Math.round(px / getContext().getResources().getDisplayMetrics().density);
-  }
 }
 `,
 );
@@ -879,7 +865,7 @@ public class MainActivity extends BridgeActivity {
       );
     }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-      window.setDecorFitsSystemWindows(false);
+      window.setDecorFitsSystemWindows(true);
     }
   }
 }
@@ -974,4 +960,26 @@ if (!/android:name="\.ScrollixPostActivity"/.test(manifest)) {
 mkdirSync(dirname(manifestPath), { recursive: true });
 writeFileSync(manifestPath, manifest);
 
+for (const stylesPath of stylesPaths) {
+  patchAndroidStyles(stylesPath);
+}
+
 console.log('Android picture-in-picture and in-app browser plugins patched.');
+
+function patchAndroidStyles(stylesPath) {
+  if (!existsSync(stylesPath)) return;
+  let styles = readFileSync(stylesPath, 'utf8');
+  styles = upsertStyleItem(styles, 'android:statusBarColor', '#2847c7');
+  styles = upsertStyleItem(styles, 'android:navigationBarColor', '#ffffff');
+  styles = upsertStyleItem(styles, 'android:windowLightStatusBar', 'false');
+  styles = upsertStyleItem(styles, 'android:windowLightNavigationBar', 'true');
+  writeFileSync(stylesPath, styles);
+}
+
+function upsertStyleItem(styles, name, value) {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const itemRegex = new RegExp(`<item\\s+name="${escapedName}">[^<]*<\\/item>`, 'g');
+  const item = `<item name="${name}">${value}</item>`;
+  if (itemRegex.test(styles)) return styles.replace(itemRegex, item);
+  return styles.replace(/<\/style>/g, `    ${item}\n    </style>`);
+}
