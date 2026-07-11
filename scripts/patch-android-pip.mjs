@@ -159,6 +159,17 @@ public class ScrollixBrowserPlugin extends Plugin {
   }
 
   @PluginMethod
+  public void getSystemBars(PluginCall call) {
+    JSObject result = new JSObject();
+    boolean edgeToEdge = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R;
+    result.put("top", edgeToEdge ? resourceDp("status_bar_height") : 0);
+    result.put("bottom", edgeToEdge ? resourceDp("navigation_bar_height") : 0);
+    result.put("left", 0);
+    result.put("right", 0);
+    call.resolve(result);
+  }
+
+  @PluginMethod
   public void fetchPreview(PluginCall call) {
     String url = call.getString("url");
     if (url == null || url.trim().isEmpty()) {
@@ -591,6 +602,13 @@ public class ScrollixBrowserPlugin extends Plugin {
     matcher.appendTail(out);
     return out.toString();
   }
+
+  private int resourceDp(String name) {
+    int resourceId = getContext().getResources().getIdentifier(name, "dimen", "android");
+    if (resourceId <= 0) return 0;
+    int px = getContext().getResources().getDimensionPixelSize(resourceId);
+    return Math.round(px / getContext().getResources().getDisplayMetrics().density);
+  }
 }
 `,
 );
@@ -804,16 +822,23 @@ writeFileSync(
   `package ${appPackage};
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowInsetsController;
 
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
   private static String pendingAppLink = "";
+  private final int primaryColor = Color.rgb(40, 71, 199);
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    configureSystemBars();
     storeAppLink(getIntent());
     registerPlugin(ScrollixPipPlugin.class);
     registerPlugin(ScrollixBrowserPlugin.class);
@@ -837,6 +862,25 @@ public class MainActivity extends BridgeActivity {
     if (intent == null) return;
     Uri data = intent.getData();
     pendingAppLink = data == null ? "" : data.toString();
+  }
+
+  private void configureSystemBars() {
+    Window window = getWindow();
+    window.setStatusBarColor(primaryColor);
+    window.setNavigationBarColor(Color.WHITE);
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+      int flags = window.getDecorView().getSystemUiVisibility();
+      window.getDecorView().setSystemUiVisibility(flags & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && window.getInsetsController() != null) {
+      window.getInsetsController().setSystemBarsAppearance(
+        0,
+        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+      );
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      window.setDecorFitsSystemWindows(false);
+    }
   }
 }
 `,

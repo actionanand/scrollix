@@ -1,5 +1,13 @@
 :root {
-  --app-header-height: calc(4.25rem + env(safe-area-inset-top));
+  --app-native-safe-area-top: 0px;
+  --app-native-safe-area-right: 0px;
+  --app-native-safe-area-bottom: 0px;
+  --app-native-safe-area-left: 0px;
+  --app-safe-area-top: env(safe-area-inset-top, 0px);
+  --app-safe-area-right: env(safe-area-inset-right, 0px);
+  --app-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --app-safe-area-left: env(safe-area-inset-left, 0px);
+  --app-header-height: calc(4.25rem + var(--app-safe-area-top));
   --app-bg: #f4f7fb;
   --app-bg-strong: #e8eef7;
   --app-surface: #ffffff;
@@ -12,9 +20,16 @@
   --app-shadow: 0 10px 30px rgba(22, 34, 51, 0.1);
 }
 
+:root.scrollix-android-app {
+  --app-safe-area-top: max(env(safe-area-inset-top, 0px), var(--app-native-safe-area-top));
+  --app-safe-area-right: max(env(safe-area-inset-right, 0px), var(--app-native-safe-area-right));
+  --app-safe-area-bottom: max(env(safe-area-inset-bottom, 0px), var(--app-native-safe-area-bottom));
+  --app-safe-area-left: max(env(safe-area-inset-left, 0px), var(--app-native-safe-area-left));
+}
+
 @media (max-width: 640px) {
   :root {
-    --app-header-height: calc(4.75rem + env(safe-area-inset-top));
+    --app-header-height: calc(4.75rem + var(--app-safe-area-top));
   }
 }
 

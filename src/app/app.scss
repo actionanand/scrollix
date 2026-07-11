@@ -17,8 +17,8 @@
   position: sticky;
   top: var(--app-header-height);
   z-index: 10;
-  padding: 0.25rem max(0.75rem, env(safe-area-inset-right)) 0.25rem
-    max(0.75rem, env(safe-area-inset-left));
+  padding: 0.25rem max(0.75rem, var(--app-safe-area-right)) 0.25rem
+    max(0.75rem, var(--app-safe-area-left));
   box-shadow: 0 4px 16px rgba(22, 34, 51, 0.06);
   backdrop-filter: blur(16px);
   overflow: hidden;
@@ -73,8 +73,8 @@
 @media (max-width: 640px) {
   .tab-nav {
     position: fixed;
-    inset: auto max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom))
-      max(0.75rem, env(safe-area-inset-left));
+    inset: auto max(0.75rem, var(--app-safe-area-right)) max(0.75rem, var(--app-safe-area-bottom))
+      max(0.75rem, var(--app-safe-area-left));
     border: 1px solid rgba(220, 227, 239, 0.86);
     border-radius: 22px;
     padding: 0.25rem;
@@ -88,13 +88,13 @@
   }
 
   .content {
-    padding: 0.85rem 0.75rem calc(6rem + env(safe-area-inset-bottom));
+    padding: 0.85rem 0.75rem calc(6rem + var(--app-safe-area-bottom));
   }
 }
 
 @media (max-width: 380px) {
   .tab-nav {
-    inset-inline: max(0.5rem, env(safe-area-inset-left)) max(0.5rem, env(safe-area-inset-right));
+    inset-inline: max(0.5rem, var(--app-safe-area-left)) max(0.5rem, var(--app-safe-area-right));
   }
 
   .tab-link {

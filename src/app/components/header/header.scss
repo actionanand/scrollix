@@ -15,8 +15,8 @@
   justify-content: space-between;
   width: 100%;
   min-width: 0;
-  padding: calc(0.85rem + env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) 0.85rem
-    max(1rem, env(safe-area-inset-left));
+  padding: calc(0.85rem + var(--app-safe-area-top)) max(1rem, var(--app-safe-area-right)) 0.85rem
+    max(1rem, var(--app-safe-area-left));
   background:
     linear-gradient(135deg, rgba(15, 143, 125, 0.26), transparent 34%),
     linear-gradient(135deg, #2847c7 0%, #1f3aa8 100%);
