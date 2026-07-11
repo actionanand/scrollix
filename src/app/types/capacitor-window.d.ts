@@ -15,7 +15,6 @@ interface ScrollixBrowserPlugin {
   fetchHtml(options: { url: string }): Promise<{ html: string }>;
   fetchPreview(options: { url: string }): Promise<ScrollixLinkPreview>;
   consumeAppLink(): Promise<{ url: string }>;
-  getSystemBars(): Promise<ScrollixSystemBars>;
 }
 
 interface ScrollixLinkPreview {
@@ -24,13 +23,6 @@ interface ScrollixLinkPreview {
   image: string;
   url: string;
   logo: string;
-}
-
-interface ScrollixSystemBars {
-  top: number;
-  bottom: number;
-  left: number;
-  right: number;
 }
 
 interface Window {
