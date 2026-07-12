@@ -12,6 +12,15 @@ const stylesPaths = [
   join('android', 'app', 'src', 'main', 'res', 'values', 'styles.xml'),
   join('android', 'app', 'src', 'main', 'res', 'values-v31', 'styles.xml'),
 ];
+const edgeToEdgeOptOutStylesPath = join(
+  'android',
+  'app',
+  'src',
+  'main',
+  'res',
+  'values-v35',
+  'styles.xml',
+);
 
 mkdirSync(javaDir, { recursive: true });
 
@@ -824,11 +833,13 @@ public class MainActivity extends BridgeActivity {
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
+    requestWindowFeature(Window.FEATURE_NO_TITLE);
     configureSystemBars();
     storeAppLink(getIntent());
     registerPlugin(ScrollixPipPlugin.class);
     registerPlugin(ScrollixBrowserPlugin.class);
     super.onCreate(savedInstanceState);
+    configureSystemBars();
   }
 
   @Override
@@ -909,6 +920,7 @@ manifest = manifest.replace(
         'android:name=".MainActivity" android:launchMode="singleTask"',
       );
     }
+    patched = upsertManifestAttribute(patched, 'android:theme', '@style/AppTheme.NoActionBar');
     return patched;
   },
 );
@@ -963,17 +975,60 @@ writeFileSync(manifestPath, manifest);
 for (const stylesPath of stylesPaths) {
   patchAndroidStyles(stylesPath);
 }
+writeAndroid15OptOutStyles(edgeToEdgeOptOutStylesPath);
 
 console.log('Android picture-in-picture and in-app browser plugins patched.');
 
 function patchAndroidStyles(stylesPath) {
   if (!existsSync(stylesPath)) return;
   let styles = readFileSync(stylesPath, 'utf8');
+  styles = ensureNoActionBarStyle(styles);
+  styles = upsertStyleItem(styles, 'colorPrimaryDark', '#2847c7');
   styles = upsertStyleItem(styles, 'android:statusBarColor', '#2847c7');
   styles = upsertStyleItem(styles, 'android:navigationBarColor', '#ffffff');
+  styles = upsertStyleItem(styles, 'android:windowActionBar', 'false');
+  styles = upsertStyleItem(styles, 'android:windowNoTitle', 'true');
+  styles = upsertStyleItem(styles, 'windowActionBar', 'false');
+  styles = upsertStyleItem(styles, 'windowNoTitle', 'true');
   styles = upsertStyleItem(styles, 'android:windowLightStatusBar', 'false');
   styles = upsertStyleItem(styles, 'android:windowLightNavigationBar', 'true');
   writeFileSync(stylesPath, styles);
+}
+
+function ensureNoActionBarStyle(styles) {
+  if (/name="AppTheme\.NoActionBar"/.test(styles)) return styles;
+  return styles.replace(
+    /<\/resources>/,
+    `    <style name="AppTheme.NoActionBar" parent="@style/AppTheme">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>`,
+  );
+}
+
+function writeAndroid15OptOutStyles(stylesPath) {
+  mkdirSync(dirname(stylesPath), { recursive: true });
+  writeFileSync(
+    stylesPath,
+    `<resources>
+    <style name="AppTheme.NoActionBar" parent="@style/AppTheme">
+        <item name="colorPrimaryDark">#2847c7</item>
+        <item name="android:statusBarColor">#2847c7</item>
+        <item name="android:navigationBarColor">#ffffff</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+</resources>
+`,
+  );
 }
 
 function upsertStyleItem(styles, name, value) {
@@ -982,4 +1037,12 @@ function upsertStyleItem(styles, name, value) {
   const item = `<item name="${name}">${value}</item>`;
   if (itemRegex.test(styles)) return styles.replace(itemRegex, item);
   return styles.replace(/<\/style>/g, `    ${item}\n    </style>`);
+}
+
+function upsertManifestAttribute(tag, name, value) {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const attrRegex = new RegExp(`${escapedName}="[^"]*"`);
+  const attr = `${name}="${value}"`;
+  if (attrRegex.test(tag)) return tag.replace(attrRegex, attr);
+  return tag.replace(/<activity\b/, `<activity ${attr}`);
 }
