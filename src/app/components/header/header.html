@@ -1,6 +1,9 @@
 <header class="app-header">
   <h1 class="app-title">Scrollix</h1>
   <div class="auth-section">
+    <a class="btn btn-settings" routerLink="/settings" aria-label="Open settings" title="Settings">
+      <span aria-hidden="true">&#9881;</span>
+    </a>
     @if (auth.isLoggedIn()) {
       <span class="welcome">Hello {{ auth.displayName() }}</span>
       <button class="btn btn-logout" (click)="onLogout()">Logout</button>

@@ -1,0 +1,115 @@
+:host {
+  display: contents;
+}
+
+.lock-overlay {
+  position: fixed;
+  z-index: 5000;
+  inset: 0;
+  display: grid;
+  min-height: 100dvh;
+  padding: max(1rem, var(--app-safe-area-top)) max(1rem, var(--app-safe-area-right))
+    max(1rem, var(--app-safe-area-bottom)) max(1rem, var(--app-safe-area-left));
+  place-items: center;
+  color: var(--app-text);
+  background: var(--app-bg);
+}
+
+.lock-panel {
+  display: grid;
+  width: min(100%, 22rem);
+  gap: 1rem;
+  padding: 1.5rem;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+  text-align: center;
+
+  > img {
+    margin: 0 auto;
+    border-radius: 50%;
+  }
+}
+
+.eyebrow {
+  color: var(--app-accent);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 1.5rem;
+  letter-spacing: 0;
+}
+
+.subtitle {
+  margin-top: 0.25rem;
+  color: var(--app-text-muted);
+  font-size: 0.85rem;
+}
+
+form {
+  display: grid;
+  gap: 0.55rem;
+  text-align: left;
+
+  label {
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+
+  input {
+    width: 100%;
+    min-height: 3rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--app-border);
+    border-radius: 6px;
+    color: var(--app-text);
+    background: var(--app-bg);
+    font-size: 1.1rem;
+    letter-spacing: 0.16em;
+
+    &:focus-visible {
+      outline: 2px solid var(--app-primary);
+      outline-offset: 2px;
+    }
+
+    &.error {
+      border-color: #b42318;
+    }
+  }
+}
+
+.primary-button,
+.biometric-button {
+  min-height: 2.75rem;
+  border-radius: 6px;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--app-primary);
+    outline-offset: 2px;
+  }
+}
+
+.primary-button {
+  margin-top: 0.25rem;
+  border: 1px solid var(--app-primary);
+  color: #fff;
+  background: var(--app-primary);
+}
+
+.biometric-button {
+  border: 1px solid var(--app-border);
+  color: var(--app-primary);
+  background: var(--app-bg);
+}
+
+.form-error {
+  color: #b42318;
+  font-size: 0.72rem;
+  font-weight: 650;
+}

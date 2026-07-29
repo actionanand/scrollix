@@ -19,6 +19,10 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'settings',
+    loadComponent: () => import('./components/settings/settings').then((m) => m.SettingsComponent),
+  },
+  {
     path: 'video/:id',
     loadComponent: () =>
       import('./components/video-detail/video-detail').then((m) => m.VideoDetailComponent),

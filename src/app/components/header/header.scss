@@ -104,6 +104,26 @@
   }
 }
 
+.btn-settings {
+  width: 36px;
+  min-width: 36px;
+  padding: 0;
+  background: rgba(15, 143, 125, 0.42);
+  color: #fff;
+
+  span {
+    display: block;
+    font-family: 'Segoe UI Symbol', 'Noto Sans Symbols', sans-serif;
+    font-size: 1.25rem;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  &:hover {
+    background: rgba(15, 143, 125, 0.62);
+  }
+}
+
 .btn-logout {
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
@@ -132,5 +152,20 @@
 
   .welcome {
     max-width: 34vw;
+  }
+}
+
+@media (max-width: 480px) {
+  .welcome {
+    display: none;
+  }
+
+  .btn {
+    padding-inline: 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  .btn-settings {
+    padding: 0;
   }
 }

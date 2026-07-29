@@ -25,7 +25,15 @@ interface ScrollixLinkPreview {
   logo: string;
 }
 
+interface ScrollixNativeBridge {
+  isBiometricAvailable(): boolean;
+  enableBiometric(secret: string): void;
+  authenticateBiometric(): void;
+  disableBiometric(): void;
+}
+
 interface Window {
+  ScrollixNative?: ScrollixNativeBridge;
   Capacitor?: {
     getPlatform?(): string;
     isNativePlatform?(): boolean;
