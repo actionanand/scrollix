@@ -1,16 +1,20 @@
-<app-header />
+<div class="app-shell" [attr.inert]="lock.locked() ? '' : null">
+  <app-header />
 
-<nav class="tab-nav" aria-label="Content tabs">
-  <a routerLink="/videos" routerLinkActive="active" class="tab-link">Videos</a>
-  <a routerLink="/posts" routerLinkActive="active" class="tab-link">Posts</a>
-  @if (auth.isLoggedIn()) {
-    <a routerLink="/support" routerLinkActive="active" class="tab-link">Support</a>
-  }
-</nav>
+  <nav class="tab-nav" aria-label="Content tabs">
+    <a routerLink="/videos" routerLinkActive="active" class="tab-link">Videos</a>
+    <a routerLink="/posts" routerLinkActive="active" class="tab-link">Posts</a>
+    @if (auth.isLoggedIn()) {
+      <a routerLink="/support" routerLinkActive="active" class="tab-link">Support</a>
+    }
+  </nav>
 
-<main class="content">
-  <router-outlet />
-</main>
+  <main class="content">
+    <router-outlet />
+  </main>
 
-<app-toast />
-<app-install-banner />
+  <app-toast />
+  <app-install-banner />
+</div>
+
+<app-lock />

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 const appPackage = 'com.actionanand.scrollix.app';
@@ -8,19 +8,8 @@ const pipPluginPath = join(javaDir, 'ScrollixPipPlugin.java');
 const browserPluginPath = join(javaDir, 'ScrollixBrowserPlugin.java');
 const postActivityPath = join(javaDir, 'ScrollixPostActivity.java');
 const manifestPath = join('android', 'app', 'src', 'main', 'AndroidManifest.xml');
-const stylesPaths = [
-  join('android', 'app', 'src', 'main', 'res', 'values', 'styles.xml'),
-  join('android', 'app', 'src', 'main', 'res', 'values-v31', 'styles.xml'),
-];
-const edgeToEdgeOptOutStylesPath = join(
-  'android',
-  'app',
-  'src',
-  'main',
-  'res',
-  'values-v35',
-  'styles.xml',
-);
+const resourcesDir = join('android', 'app', 'src', 'main', 'res');
+const gradlePath = join('android', 'app', 'build.gradle');
 
 mkdirSync(javaDir, { recursive: true });
 
@@ -821,13 +810,30 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.security.keystore.KeyGenParameterSpec;
+import android.security.keystore.KeyProperties;
+import android.util.Base64;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowInsetsController;
+import android.webkit.JavascriptInterface;
 
+import androidx.biometric.BiometricManager;
+import androidx.biometric.BiometricPrompt;
+import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 
+import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
+import java.util.concurrent.Executor;
+
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+
 public class MainActivity extends BridgeActivity {
+  private static final String BIOMETRIC_KEY_ALIAS = "scrollix_biometric_key";
   private static String pendingAppLink = "";
   private final int primaryColor = Color.rgb(40, 71, 199);
 
@@ -839,6 +845,13 @@ public class MainActivity extends BridgeActivity {
     registerPlugin(ScrollixPipPlugin.class);
     registerPlugin(ScrollixBrowserPlugin.class);
     super.onCreate(savedInstanceState);
+    getBridge().getWebView().addJavascriptInterface(new NativeBridge(), "ScrollixNative");
+    configureSystemBars();
+  }
+
+  @Override
+  public void onResume() {
+    super.onResume();
     configureSystemBars();
   }
 
@@ -859,6 +872,163 @@ public class MainActivity extends BridgeActivity {
     if (intent == null) return;
     Uri data = intent.getData();
     pendingAppLink = data == null ? "" : data.toString();
+  }
+
+  public class NativeBridge {
+    @JavascriptInterface
+    public boolean isBiometricAvailable() {
+      return BiometricManager.from(MainActivity.this).canAuthenticate(
+        BiometricManager.Authenticators.BIOMETRIC_STRONG
+      ) == BiometricManager.BIOMETRIC_SUCCESS;
+    }
+
+    @JavascriptInterface
+    public void enableBiometric(String secret) {
+      runOnUiThread(() -> {
+        try {
+          Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+          cipher.init(Cipher.ENCRYPT_MODE, createBiometricKey());
+          showBiometricPrompt(
+            "Enable fingerprint unlock",
+            "Confirm your fingerprint for Scrollix",
+            cipher,
+            () -> {
+              try {
+                byte[] encrypted = cipher.doFinal(secret.getBytes(StandardCharsets.UTF_8));
+                getPreferences(MODE_PRIVATE).edit()
+                  .putString(
+                    "biometric_ciphertext",
+                    Base64.encodeToString(encrypted, Base64.NO_WRAP)
+                  )
+                  .putString(
+                    "biometric_iv",
+                    Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP)
+                  )
+                  .apply();
+                dispatchWebEvent("biometric-enabled");
+              } catch (Exception ignored) {
+                // PIN remains available when biometric setup fails.
+              }
+            }
+          );
+        } catch (Exception ignored) {
+          // PIN remains available when biometric setup cannot start.
+        }
+      });
+    }
+
+    @JavascriptInterface
+    public void authenticateBiometric() {
+      runOnUiThread(() -> {
+        try {
+          String encryptedValue = getPreferences(MODE_PRIVATE)
+            .getString("biometric_ciphertext", "");
+          String ivValue = getPreferences(MODE_PRIVATE).getString("biometric_iv", "");
+          if (encryptedValue.isEmpty() || ivValue.isEmpty()) return;
+
+          Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+          cipher.init(
+            Cipher.DECRYPT_MODE,
+            loadBiometricKey(),
+            new GCMParameterSpec(128, Base64.decode(ivValue, Base64.NO_WRAP))
+          );
+          showBiometricPrompt(
+            "Unlock Scrollix",
+            "Use your fingerprint or enter your PIN",
+            cipher,
+            () -> {
+              try {
+                byte[] result = cipher.doFinal(
+                  Base64.decode(encryptedValue, Base64.NO_WRAP)
+                );
+                if (result.length > 0) dispatchWebEvent("biometric-success");
+              } catch (Exception ignored) {
+                // PIN remains available when biometric decryption fails.
+              }
+            }
+          );
+        } catch (Exception ignored) {
+          // PIN remains available when the keystore key is invalidated.
+        }
+      });
+    }
+
+    @JavascriptInterface
+    public void disableBiometric() {
+      getPreferences(MODE_PRIVATE).edit()
+        .remove("biometric_ciphertext")
+        .remove("biometric_iv")
+        .apply();
+      try {
+        KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+        keyStore.load(null);
+        keyStore.deleteEntry(BIOMETRIC_KEY_ALIAS);
+      } catch (Exception ignored) {
+        // There may be no biometric key yet.
+      }
+    }
+  }
+
+  private void showBiometricPrompt(
+    String title,
+    String subtitle,
+    Cipher cipher,
+    Runnable success
+  ) {
+    Executor executor = ContextCompat.getMainExecutor(this);
+    BiometricPrompt prompt = new BiometricPrompt(
+      this,
+      executor,
+      new BiometricPrompt.AuthenticationCallback() {
+        @Override
+        public void onAuthenticationSucceeded(BiometricPrompt.AuthenticationResult result) {
+          super.onAuthenticationSucceeded(result);
+          success.run();
+        }
+      }
+    );
+    BiometricPrompt.PromptInfo info = new BiometricPrompt.PromptInfo.Builder()
+      .setTitle(title)
+      .setSubtitle(subtitle)
+      .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
+      .setNegativeButtonText("Use PIN")
+      .build();
+    prompt.authenticate(info, new BiometricPrompt.CryptoObject(cipher));
+  }
+
+  private SecretKey createBiometricKey() throws Exception {
+    KeyGenerator generator = KeyGenerator.getInstance(
+      KeyProperties.KEY_ALGORITHM_AES,
+      "AndroidKeyStore"
+    );
+    KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(
+      BIOMETRIC_KEY_ALIAS,
+      KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT
+    )
+      .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+      .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+      .setUserAuthenticationRequired(true)
+      .setInvalidatedByBiometricEnrollment(true);
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      builder.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG);
+    }
+    generator.init(builder.build());
+    return generator.generateKey();
+  }
+
+  private SecretKey loadBiometricKey() throws Exception {
+    KeyStore keyStore = KeyStore.getInstance("AndroidKeyStore");
+    keyStore.load(null);
+    return (SecretKey) keyStore.getKey(BIOMETRIC_KEY_ALIAS, null);
+  }
+
+  private void dispatchWebEvent(String eventName) {
+    getBridge().getWebView().post(() ->
+      getBridge().getWebView().evaluateJavascript(
+        "window.dispatchEvent(new CustomEvent('" + eventName + "'))",
+        null
+      )
+    );
   }
 
   private void configureSystemBars() {
@@ -888,6 +1058,12 @@ if (!/android\.permission\.INTERNET/.test(manifest)) {
   manifest = manifest.replace(
     /<manifest([^>]*)>/,
     '<manifest$1>\n    <uses-permission android:name="android.permission.INTERNET" />',
+  );
+}
+if (!/android\.permission\.USE_BIOMETRIC/.test(manifest)) {
+  manifest = manifest.replace(
+    '<application',
+    '    <uses-permission android:name="android.permission.USE_BIOMETRIC" />\n\n    <application',
   );
 }
 manifest = manifest.replace(
@@ -920,7 +1096,11 @@ manifest = manifest.replace(
         'android:name=".MainActivity" android:launchMode="singleTask"',
       );
     }
-    patched = upsertManifestAttribute(patched, 'android:theme', '@style/AppTheme.NoActionBar');
+    patched = upsertManifestAttribute(
+      patched,
+      'android:theme',
+      '@style/AppTheme.NoActionBarLaunch',
+    );
     return patched;
   },
 );
@@ -972,71 +1152,110 @@ if (!/android:name="\.ScrollixPostActivity"/.test(manifest)) {
 mkdirSync(dirname(manifestPath), { recursive: true });
 writeFileSync(manifestPath, manifest);
 
-for (const stylesPath of stylesPaths) {
-  patchAndroidStyles(stylesPath);
-}
-writeAndroid15OptOutStyles(edgeToEdgeOptOutStylesPath);
+writeSplashResources();
 
-console.log('Android picture-in-picture and in-app browser plugins patched.');
-
-function patchAndroidStyles(stylesPath) {
-  if (!existsSync(stylesPath)) return;
-  let styles = readFileSync(stylesPath, 'utf8');
-  styles = ensureNoActionBarStyle(styles);
-  styles = upsertStyleItem(styles, 'colorPrimaryDark', '#2847c7');
-  styles = upsertStyleItem(styles, 'android:statusBarColor', '#2847c7');
-  styles = upsertStyleItem(styles, 'android:navigationBarColor', '#ffffff');
-  styles = upsertStyleItem(styles, 'android:windowActionBar', 'false');
-  styles = upsertStyleItem(styles, 'android:windowNoTitle', 'true');
-  styles = upsertStyleItem(styles, 'windowActionBar', 'false');
-  styles = upsertStyleItem(styles, 'windowNoTitle', 'true');
-  styles = upsertStyleItem(styles, 'android:windowLightStatusBar', 'false');
-  styles = upsertStyleItem(styles, 'android:windowLightNavigationBar', 'true');
-  writeFileSync(stylesPath, styles);
+let gradle = readFileSync(gradlePath, 'utf8');
+if (!gradle.includes('androidx.biometric:biometric')) {
+  gradle = gradle.replace(
+    /dependencies\s*\{/,
+    "dependencies {\n    implementation 'androidx.biometric:biometric:1.1.0'",
+  );
+  writeFileSync(gradlePath, gradle);
 }
 
-function ensureNoActionBarStyle(styles) {
-  if (/name="AppTheme\.NoActionBar"/.test(styles)) return styles;
-  return styles.replace(
-    /<\/resources>/,
-    `    <style name="AppTheme.NoActionBar" parent="@style/AppTheme">
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
-        <item name="android:windowActionBar">false</item>
+console.log('Android PIP, browser, biometric, system bar, and splash support patched.');
+
+function writeSplashResources() {
+  const legacyStyles = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">#2847c7</item>
+        <item name="colorPrimaryDark">#2847c7</item>
+        <item name="colorAccent">#0f8f7d</item>
+        <item name="android:fontFamily">sans</item>
         <item name="android:windowNoTitle">true</item>
     </style>
-</resources>`,
-  );
-}
-
-function writeAndroid15OptOutStyles(stylesPath) {
-  mkdirSync(dirname(stylesPath), { recursive: true });
-  writeFileSync(
-    stylesPath,
-    `<resources>
-    <style name="AppTheme.NoActionBar" parent="@style/AppTheme">
-        <item name="colorPrimaryDark">#2847c7</item>
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">#f4f7fb</item>
         <item name="android:statusBarColor">#2847c7</item>
         <item name="android:navigationBarColor">#ffffff</item>
-        <item name="android:windowActionBar">false</item>
-        <item name="android:windowNoTitle">true</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">true</item>
-        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
-        <item name="windowActionBar">false</item>
-        <item name="windowNoTitle">true</item>
+        <item name="android:windowNoTitle">true</item>
     </style>
-</resources>
-`,
+    <style name="AppTheme.NoActionBarLaunch" parent="AppTheme.NoActionBar">
+        <item name="android:windowBackground">@drawable/scrollix_splash_screen</item>
+        <item name="android:statusBarColor">#2847c7</item>
+        <item name="android:navigationBarColor">#2847c7</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>`;
+  const android12Styles = `<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">#2847c7</item>
+        <item name="colorPrimaryDark">#2847c7</item>
+        <item name="colorAccent">#0f8f7d</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">#f4f7fb</item>
+        <item name="android:statusBarColor">#2847c7</item>
+        <item name="android:navigationBarColor">#ffffff</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#2847c7</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/scrollix_splash_icon</item>
+        <item name="windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <item name="android:statusBarColor">#2847c7</item>
+        <item name="android:navigationBarColor">#2847c7</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>`;
+  const android15Styles = android12Styles.replace(
+    '</style>\n</resources>',
+    '        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>\n    </style>\n</resources>',
   );
+
+  writeResource('values/styles.xml', legacyStyles);
+  writeResource('values-v31/styles.xml', android12Styles);
+  writeResource('values-v35/styles.xml', android15Styles);
+  writeResource(
+    'values/scrollix_colours.xml',
+    '<?xml version="1.0" encoding="utf-8"?><resources><color name="scrollix_splash_background">#2847c7</color></resources>',
+  );
+  writeResource(
+    'drawable/scrollix_splash_icon.xml',
+    `<?xml version="1.0" encoding="utf-8"?>
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/scrollix_splash_logo"
+    android:inset="28%" />`,
+  );
+  writeResource(
+    'drawable/scrollix_splash_screen.xml',
+    `<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/scrollix_splash_background" />
+    <item android:gravity="center">
+        <inset android:drawable="@drawable/scrollix_splash_logo" android:inset="36%" />
+    </item>
+</layer-list>`,
+  );
+  const splashLogoDir = join(resourcesDir, 'drawable-nodpi');
+  mkdirSync(splashLogoDir, { recursive: true });
+  copyFileSync('public/scrollix.png', join(splashLogoDir, 'scrollix_splash_logo.png'));
 }
 
-function upsertStyleItem(styles, name, value) {
-  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const itemRegex = new RegExp(`<item\\s+name="${escapedName}">[^<]*<\\/item>`, 'g');
-  const item = `<item name="${name}">${value}</item>`;
-  if (itemRegex.test(styles)) return styles.replace(itemRegex, item);
-  return styles.replace(/<\/style>/g, `    ${item}\n    </style>`);
+function writeResource(relativePath, content) {
+  const resourcePath = join(resourcesDir, ...relativePath.split('/'));
+  mkdirSync(dirname(resourcePath), { recursive: true });
+  writeFileSync(resourcePath, content);
 }
 
 function upsertManifestAttribute(tag, name, value) {

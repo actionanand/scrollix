@@ -1,0 +1,159 @@
+<main class="settings-backdrop">
+  <section
+    class="settings-dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="settings-title"
+    [attr.inert]="pinDialogOpen() || confirmRemove() ? '' : null"
+  >
+    <header class="page-heading">
+      <div>
+        <p>Preferences</p>
+        <h1 id="settings-title">Settings</h1>
+        <span>Manage security stored on this device.</span>
+      </div>
+      <a routerLink="/videos" class="close-button" aria-label="Close settings" title="Close">
+        &times;
+      </a>
+    </header>
+
+    <div class="settings-body">
+      <section class="settings-section" aria-labelledby="security-title">
+        <header>
+          <div>
+            <h2 id="security-title">Security</h2>
+            <p>Protect Scrollix locally with a PIN and Android fingerprint unlock.</p>
+          </div>
+        </header>
+
+        <div class="setting-rows">
+          <div class="setting-row">
+            <span>
+              <strong>PIN protection</strong>
+              <small>{{ settings.settings().pinEnabled ? 'Enabled' : 'Not configured' }}</small>
+            </span>
+            <button class="action-button primary" type="button" (click)="openPinDialog()">
+              {{ settings.settings().pinEnabled ? 'Change PIN' : 'Enable PIN' }}
+            </button>
+          </div>
+
+          <div class="setting-row">
+            <span>
+              <strong>Fingerprint unlock</strong>
+              <small>{{ biometricDescription() }}</small>
+            </span>
+            <button
+              class="switch"
+              type="button"
+              role="switch"
+              aria-label="Fingerprint unlock"
+              [disabled]="!security.biometricAvailable || !settings.settings().pinEnabled"
+              [attr.aria-checked]="settings.settings().biometricEnabled"
+              [class.on]="settings.settings().biometricEnabled"
+              (click)="toggleBiometric()"
+            >
+              <span></span>
+            </button>
+          </div>
+        </div>
+
+        @if (settings.settings().pinEnabled) {
+          <div class="security-actions">
+            <button class="action-button" type="button" (click)="lock.lockNow()">Lock now</button>
+            <button class="action-button danger" type="button" (click)="confirmRemove.set(true)">
+              Disable PIN
+            </button>
+          </div>
+        }
+      </section>
+    </div>
+  </section>
+
+  @if (message()) {
+    <p class="settings-message" role="status">{{ message() }}</p>
+  }
+</main>
+
+@if (pinDialogOpen()) {
+  <div class="dialog-backdrop">
+    <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="pin-dialog-title">
+      <header>
+        <div>
+          <p>Device security</p>
+          <h2 id="pin-dialog-title">
+            {{ settings.settings().pinEnabled ? 'Change PIN' : 'Create a PIN' }}
+          </h2>
+        </div>
+        <button
+          type="button"
+          aria-label="Close PIN dialog"
+          title="Close"
+          (click)="closePinDialog()"
+        >
+          &times;
+        </button>
+      </header>
+      <p class="warning">
+        There is no PIN recovery. If you forget it, clear the app data to regain access.
+      </p>
+      <form [formGroup]="pinForm" (ngSubmit)="savePin()">
+        <label for="new-pin">New PIN</label>
+        <input
+          id="new-pin"
+          formControlName="pin"
+          type="password"
+          inputmode="numeric"
+          autocomplete="new-password"
+          minlength="4"
+          maxlength="8"
+        />
+        <label for="confirm-pin">Confirm PIN</label>
+        <input
+          id="confirm-pin"
+          formControlName="confirmation"
+          type="password"
+          inputmode="numeric"
+          autocomplete="new-password"
+          minlength="4"
+          maxlength="8"
+        />
+        @if (formError()) {
+          <p class="form-error" role="alert">{{ formError() }}</p>
+        }
+        <footer>
+          <button class="action-button" type="button" (click)="closePinDialog()">Cancel</button>
+          <button class="action-button primary" type="submit" [disabled]="savingPin()">
+            {{ savingPin() ? 'Saving...' : 'Save PIN' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+}
+
+@if (confirmRemove()) {
+  <div class="dialog-backdrop">
+    <section
+      class="dialog compact-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="remove-pin-title"
+    >
+      <header>
+        <div>
+          <p>Device security</p>
+          <h2 id="remove-pin-title">Disable PIN protection?</h2>
+        </div>
+      </header>
+      <p>Fingerprint unlock will also be disabled.</p>
+      <footer>
+        <button class="action-button" type="button" (click)="confirmRemove.set(false)">
+          Cancel
+        </button>
+        <button class="action-button danger" type="button" (click)="removePin()">
+          Disable PIN
+        </button>
+      </footer>
+    </section>
+  </div>
+}

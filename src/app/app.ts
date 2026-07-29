@@ -10,6 +10,8 @@ import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/rou
 import { HeaderComponent } from './components/header/header';
 import { ToastComponent } from './components/toast/toast';
 import { InstallBannerComponent } from './components/install-banner/install-banner';
+import { AppLockComponent } from './components/app-lock/app-lock';
+import { AppLockService } from './services/app-lock.service';
 import { AuthService } from './services/auth.service';
 import { environment } from '../environments/environment';
 
@@ -29,13 +31,19 @@ const CUSTOM_LINK_VIDEO_HOST = 'video';
     HeaderComponent,
     ToastComponent,
     InstallBannerComponent,
+    AppLockComponent,
   ],
+  host: {
+    '(document:visibilitychange)': 'onVisibilityChange()',
+    '(window:biometric-success)': 'onBiometricSuccess()',
+  },
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
 export class App {
   protected readonly title = signal('Scrollix');
   protected readonly auth = inject(AuthService);
+  protected readonly lock = inject(AppLockService);
 
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -58,6 +66,14 @@ export class App {
         document.removeEventListener('visibilitychange', handleVisibility);
       });
     });
+  }
+
+  protected onVisibilityChange(): void {
+    this.lock.handleVisibilityChange();
+  }
+
+  protected onBiometricSuccess(): void {
+    this.lock.unlock();
   }
 
   private async consumePendingAppLink(): Promise<void> {

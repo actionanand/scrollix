@@ -1,0 +1,39 @@
+@if (lock.locked()) {
+  <main class="lock-overlay">
+    <section class="lock-panel" aria-labelledby="unlock-title">
+      <img ngSrc="scrollix.png" width="72" height="72" alt="" priority />
+      <div>
+        <p class="eyebrow">Welcome back</p>
+        <h1 id="unlock-title">Unlock Scrollix</h1>
+        <p class="subtitle">Enter your PIN to continue.</p>
+      </div>
+
+      <form [formGroup]="unlockForm" (ngSubmit)="unlockWithPin()">
+        <label for="unlock-pin">PIN</label>
+        <input
+          id="unlock-pin"
+          formControlName="pin"
+          [class.error]="error()"
+          [attr.aria-invalid]="error() ? true : null"
+          type="password"
+          inputmode="numeric"
+          autocomplete="current-password"
+          maxlength="8"
+          (input)="error.set('')"
+        />
+        @if (error()) {
+          <p class="form-error" role="alert">{{ error() }}</p>
+        }
+        <button class="primary-button" type="submit" [disabled]="verifying()">
+          {{ verifying() ? 'Checking...' : 'Unlock' }}
+        </button>
+      </form>
+
+      @if (settings.settings().biometricEnabled && security.biometricAvailable) {
+        <button class="biometric-button" type="button" (click)="security.requestBiometric()">
+          Use fingerprint
+        </button>
+      }
+    </section>
+  </main>
+}

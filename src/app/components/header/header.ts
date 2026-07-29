@@ -1,11 +1,12 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { LoginDialogComponent } from '../login-dialog/login-dialog';
 
 @Component({
   selector: 'app-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [LoginDialogComponent],
+  imports: [LoginDialogComponent, RouterLink],
   templateUrl: './header.html',
   styleUrl: './header.scss',
 })
